@@ -465,6 +465,13 @@
   .list-row .del{color:var(--rose-deep);cursor:pointer;font-size:1rem;padding:2px 6px;}
   .list-row .updown{display:flex;flex-direction:column;gap:1px;}
   .list-row .updown span{cursor:pointer;font-size:0.6875rem;color:var(--ink-soft);line-height:1;padding:2px;}
+  .neis-event-row{flex-wrap:wrap;}
+  .neis-classify{display:flex;gap:4px;flex-shrink:0;}
+  .neis-classify-btn{
+    font-size:0.6875rem;font-weight:600;padding:4px 9px;border-radius:20px;
+    background:var(--bg-soft);color:var(--ink-soft);border:1px solid var(--line);cursor:pointer;
+  }
+  .neis-classify-btn.active{background:var(--coral-bg);color:var(--coral-deep);border-color:var(--coral);}
   .plan-item-row.done{opacity:.55;}
   .plan-item-row.done .grow{text-decoration:line-through;}
 
@@ -531,6 +538,16 @@
   .small-note{font-size:0.75rem;color:var(--ink-soft);line-height:1.6;margin:6px 0 10px;}
   .danger-zone{margin-top:20px;text-align:center;}
   .danger-zone button{background:none;border:none;color:var(--ink-faint);font-size:0.75rem;text-decoration:underline;cursor:pointer;}
+
+  .transfer-row{display:flex;gap:10px;margin-top:10px;}
+  .transfer-col{flex:1;min-width:0;}
+  .transfer-code-box{
+    text-align:center; background:var(--coral-bg); border:1px solid var(--coral);
+    border-radius:10px; padding:12px; margin-top:8px;
+  }
+  .transfer-code-box .tc-label{font-size:0.75rem;color:var(--coral-deep);margin-bottom:4px;}
+  .transfer-code-box .tc-code{font-size:1.75rem;font-weight:700;letter-spacing:3px;color:var(--coral-deep);font-family:'Pretendard',sans-serif;}
+  .transfer-code-box .tc-note{font-size:0.6875rem;color:var(--ink-soft);margin-top:4px;}
 </style>
 </head>
 <body>
@@ -582,6 +599,8 @@ var CLASS_COLORS = ['#D9B99B','#A8BFA0','#C9AFC4','#BFAF8C','#A7B8BF','#C7A6A0',
 var DAYS = ['월','화','수','목','금'];
 var DOW_KOR = ['일','월','화','수','목','금','토'];
 var EXAM_TYPES = { mock:'모의고사', writtenExam:'지필평가', performance:'수행평가', event:'학교행사' };
+var RTDB_URL = 'https://jindo-transfer-default-rtdb.asia-southeast1.firebasedatabase.app';
+var NEIS_KEY = 'a588af37ac43467190d522f11817e616';
 var STATUS_ORDER = ['pending','inProgress','practicing','done'];
 var STATUS_META = {
   pending:   { label:'수업 예정',      short:'예정' },
@@ -690,7 +709,7 @@ function escapeHtml(s){
 function defaultSettings(){
   var schedule = {};
   DAYS.forEach(function(d){ schedule[d] = new Array(7).fill(null); });
-  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisKey:'', neisOfcdc:'', neisSchul:'', neisSchoolName:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00', lunchAfterPeriod:4, lunchDuration:50 };
+  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisOfcdc:'', neisSchul:'', neisSchoolName:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00', lunchAfterPeriod:4, lunchDuration:50 };
 }
 var SCHOOL_LEVEL_DURATION = { elementary:40, middle:45, high:50 };
 function computePeriodTime(periodIndex){
@@ -751,7 +770,10 @@ function isAutoHolidayActive(dateStr){
 }
 function isHolidayEffective(dateStr){
   return state.settings.holidays.indexOf(dateStr) !== -1 || isAutoHolidayActive(dateStr) || isSuneungDate(dateStr) ||
-    (state.settings.neisHolidays||[]).some(function(h){ return h.date===dateStr; });
+    (state.settings.neisHolidays||[]).some(function(h){ return h.date===dateStr && h.classified==='holiday'; });
+}
+function findNeisEvent(dateStr){
+  return (state.settings.neisHolidays||[]).find(function(h){ return h.date===dateStr; }) || null;
 }
 function inAnySemester(dateStr){
   if(!state.settings.semesters.length) return true;
@@ -1059,18 +1081,40 @@ function exportExcel(btn){
   });
 }
 
-function exportJSONBackup(btn){
-  var origText = btn.textContent;
-  btn.textContent = '내보내는 중...';
-  btn.disabled = true;
-  listStoredKeys('records:').then(function(keys){
+function buildBackupObject(){
+  return listStoredKeys('records:').then(function(keys){
     return Promise.all(keys.map(function(k){
       return loadJSON(k, {}).then(function(v){ return [k, v]; });
     }));
   }).then(function(pairs){
     var records = {};
     pairs.forEach(function(p){ records[p[0].replace('records:','')] = p[1]; });
-    var backup = { app:'jindosucheop', version:1, exportedAt: todayStr(), settings: state.settings, plans: state.plans, records: records };
+    return { app:'jindosucheop', version:1, exportedAt: todayStr(), settings: state.settings, plans: state.plans, records: records };
+  });
+}
+
+function restoreBackupObject(data){
+  if(!data || !data.settings) return Promise.reject(new Error('올바른 백업 데이터가 아니에요.'));
+  state.settings = data.settings;
+  state.plans = data.plans || {};
+  state.monthCache = {};
+  var writes = [saveSettings(), savePlans()];
+  Object.keys(data.records || {}).forEach(function(ym){
+    state.monthCache[ym] = data.records[ym];
+    writes.push(saveJSON('records:'+ym, data.records[ym]));
+  });
+  return Promise.all(writes).then(function(){
+    state.currentDate = todayStr();
+    renderAll();
+    flashSaved();
+  });
+}
+
+function exportJSONBackup(btn){
+  var origText = btn.textContent;
+  btn.textContent = '내보내는 중...';
+  btn.disabled = true;
+  buildBackupObject().then(function(backup){
     var blob = new Blob([JSON.stringify(backup)], { type:'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -1093,19 +1137,9 @@ function importJSONBackup(file){
   reader.onload = function(e){
     try{
       var data = JSON.parse(e.target.result);
-      if(!data || !data.settings){ alert('올바른 백업 파일이 아니에요.'); return; }
-      state.settings = data.settings;
-      state.plans = data.plans || {};
-      state.monthCache = {};
-      var writes = [saveSettings(), savePlans()];
-      Object.keys(data.records || {}).forEach(function(ym){
-        state.monthCache[ym] = data.records[ym];
-        writes.push(saveJSON('records:'+ym, data.records[ym]));
-      });
-      Promise.all(writes).then(function(){
-        state.currentDate = todayStr();
-        renderAll();
-        flashSaved();
+      restoreBackupObject(data).catch(function(err){
+        console.error(err);
+        alert('올바른 백업 파일이 아니에요.');
       });
     }catch(err){
       console.error('백업 불러오기 실패', err);
@@ -1117,6 +1151,77 @@ function importJSONBackup(file){
 
 function ymd8(dateStr){ return dateStr.replace(/-/g,''); }
 function fromYmd8(s){ return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8); }
+
+function generateTransferCode(){
+  return String(Math.floor(100000 + Math.random()*900000));
+}
+
+function exportViaCode(btn, resultEl){
+  var rtdbUrl = RTDB_URL;
+  var origText = btn.textContent;
+  btn.textContent = '올리는 중...';
+  btn.disabled = true;
+  resultEl.innerHTML = '';
+  buildBackupObject().then(function(backup){
+    var code = generateTransferCode();
+    var jsonStr = JSON.stringify(backup);
+    return fetch(rtdbUrl+'/transfers/'+code+'.json', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ data: jsonStr, createdAt: Date.now() })
+    }).then(function(r){
+      if(!r.ok) throw new Error('업로드 실패 ('+r.status+')');
+      return code;
+    });
+  }).then(function(code){
+    resultEl.innerHTML = '<div class="transfer-code-box">'+
+      '<div class="tc-label">이 번호를 새 기기에 입력하세요</div>'+
+      '<div class="tc-code">'+code+'</div>'+
+      '<div class="tc-note">30분 정도만 유효해요. 다른 사람에게 알려주지 마세요.</div></div>';
+    btn.textContent = origText;
+    btn.disabled = false;
+  }).catch(function(err){
+    console.error('코드 내보내기 실패', err);
+    resultEl.innerHTML = '<p class="small-note">업로드에 실패했어요. Firebase 주소와 규칙 설정을 확인해주세요. ('+escapeHtml(err.message||'')+')</p>';
+    btn.textContent = origText;
+    btn.disabled = false;
+  });
+}
+
+function importViaCode(btn, code, resultEl){
+  var rtdbUrl = RTDB_URL;
+  code = (code||'').trim();
+  if(!/^[0-9]{6}$/.test(code)){
+    resultEl.innerHTML = '<p class="small-note">6자리 숫자 코드를 입력해주세요.</p>';
+    return;
+  }
+  if(!confirm('코드로 데이터를 불러오면 지금 기기에 있는 데이터를 덮어써요. 계속할까요?')) return;
+  var origText = btn.textContent;
+  btn.textContent = '가져오는 중...';
+  btn.disabled = true;
+  var path = rtdbUrl+'/transfers/'+code+'.json';
+  fetch(path).then(function(r){ return r.json(); }).then(function(entry){
+    if(!entry || !entry.data) throw new Error('해당 코드를 찾을 수 없어요. 코드나 유효시간을 확인해주세요.');
+    var ageMs = Date.now() - (entry.createdAt||0);
+    if(ageMs > 30*60*1000){
+      fetch(path, { method:'DELETE' });
+      throw new Error('코드가 만료됐어요(30분 경과). 다시 내보내기 해주세요.');
+    }
+    var backup = JSON.parse(entry.data);
+    return restoreBackupObject(backup).then(function(){
+      return fetch(path, { method:'DELETE' });
+    });
+  }).then(function(){
+    resultEl.innerHTML = '<p class="small-note">불러오기 완료! 이 코드는 이제 사용할 수 없어요.</p>';
+    btn.textContent = origText;
+    btn.disabled = false;
+  }).catch(function(err){
+    console.error('코드 가져오기 실패', err);
+    resultEl.innerHTML = '<p class="small-note">'+escapeHtml(err.message||'불러오기에 실패했어요.')+'</p>';
+    btn.textContent = origText;
+    btn.disabled = false;
+  });
+}
 
 function searchNeisSchool(key, name, body){
   var resultsEl = document.getElementById('neisSearchResults');
@@ -1177,13 +1282,13 @@ function fetchNeisSchedule(key, ofcdc, schul, statusEl, body){
       return;
     }
     var rows = (data.SchoolSchedule && data.SchoolSchedule[1] && data.SchoolSchedule[1].row) || [];
-    var imported = rows.filter(function(r){ return r.SBTR_DD_SC_NM && r.SBTR_DD_SC_NM.trim(); })
+    var imported = rows.filter(function(r){ return r.EVENT_NM && r.EVENT_NM.trim(); })
       .map(function(r){
         var grades = [];
         if(r.ONE_GRADE_EVENT_YN==='Y') grades.push('1학년');
         if(r.TW_GRADE_EVENT_YN==='Y') grades.push('2학년');
         if(r.THREE_GRADE_EVENT_YN==='Y') grades.push('3학년');
-        return { date: fromYmd8(r.AA_YMD), name: r.EVENT_NM || r.SBTR_DD_SC_NM, grades: grades };
+        return { date: fromYmd8(r.AA_YMD), name: r.EVENT_NM, sbtr: r.SBTR_DD_SC_NM||'', grades: grades, classified:'event' };
       });
     state.settings.neisHolidays = imported;
     saveSettings().then(function(){
@@ -1582,8 +1687,16 @@ function renderCalendar(){
       if(exam){ eventLabel = exam.name; }
       else if(isHoliday){
         var autoH = findAutoHoliday(ds);
-        eventLabel = (autoH && isAutoHolidayActive(ds)) ? autoH.name : '휴업일';
+        var neisH = findNeisEvent(ds);
+        if(autoH && isAutoHolidayActive(ds)) eventLabel = autoH.name;
+        else if(isSuneungDate(ds)) eventLabel = '대학수학능력시험일';
+        else if(neisH && neisH.classified==='holiday') eventLabel = neisH.name;
+        else eventLabel = '휴업일';
       } else if(isVacation){ eventLabel = '방학'; }
+      else {
+        var neisEv = findNeisEvent(ds);
+        if(neisEv) eventLabel = neisEv.name;
+      }
       html += '<div class="'+cls+'" data-date="'+ds+'"><span class="num">'+day+'</span>'+
         (exam?'<span class="exam-flag"></span>':'')+
         (eventLabel?('<div class="event-label">'+escapeHtml(eventLabel)+'</div>'):'')+
@@ -1928,6 +2041,16 @@ function buildDataHtml(){
     '<div class="add-row"><button class="btn ghost small" id="backupExportBtn">백업 파일 내보내기</button>'+
     '<button class="btn ghost small" id="backupImportBtn">백업 파일 불러오기</button></div>'+
     '<input type="file" id="backupFileInput" accept="application/json" style="display:none;"></div>';
+  html += '<div class="settings-section"><h3>코드로 이관</h3>'+
+    '<p class="small-note">번호 6자리로 다른 기기에 전체 데이터를 옮겨요.</p>'+
+    '<div class="transfer-row"><div class="transfer-col">'+
+      '<button class="btn ghost small" id="exportCodeBtn" style="width:100%;">내보내기 (코드 받기)</button>'+
+      '<div id="exportCodeResult"></div>'+
+    '</div><div class="transfer-col">'+
+      '<div class="add-row"><input type="text" id="importCodeInput" placeholder="6자리 코드" inputmode="numeric" maxlength="6" style="flex:1;">'+
+      '<button class="btn ghost small" id="importCodeBtn">가져오기</button></div>'+
+      '<div id="importCodeResult"></div>'+
+    '</div></div></div>';
   html += '<div class="danger-zone"><button id="resetAllBtn">모든 데이터 초기화</button></div>';
   return html;
 }
@@ -1947,6 +2070,13 @@ function bindDataEvents(body){
     if(!file) return;
     importJSONBackup(file);
     e.target.value = '';
+  });
+  document.getElementById('exportCodeBtn').addEventListener('click', function(){
+    exportViaCode(this, document.getElementById('exportCodeResult'));
+  });
+  document.getElementById('importCodeBtn').addEventListener('click', function(){
+    var code = document.getElementById('importCodeInput').value;
+    importViaCode(this, code, document.getElementById('importCodeResult'));
   });
   document.getElementById('resetAllBtn').addEventListener('click', function(){
     if(!confirm('정말 모든 데이터를 초기화할까요? 되돌릴 수 없어요.')) return;
@@ -2151,7 +2281,7 @@ function bindScheduleEvents(body){
 
 function renderSettingsCalendar(body){
   if(!state.academicSubTab) state.academicSubTab = 'writtenExam';
-  var subTabs = [['writtenExam','지필평가'],['mock','모의고사'],['performance','수행평가'],['event','학교행사'],['calendar','학기·휴업일']];
+  var subTabs = [['writtenExam','지필평가'],['mock','모의고사'],['performance','수행평가'],['event','학교행사'],['calendar','학기·휴업일'],['neis','나이스 불러오기']];
   var html = '<div class="tab-pills sub-pills">';
   subTabs.forEach(function(t){
     html += '<div class="tab-pill sub'+(state.academicSubTab===t[0]?' active':'')+'" data-subtab="'+t[0]+'">'+t[1]+'</div>';
@@ -2163,6 +2293,7 @@ function renderSettingsCalendar(body){
   });
   var sub = document.getElementById('academicBody');
   if(state.academicSubTab==='calendar') renderSettingsSemesterHoliday(sub);
+  else if(state.academicSubTab==='neis') renderSettingsNeis(sub);
   else renderSettingsExamType(sub, state.academicSubTab);
 }
 
@@ -2274,23 +2405,9 @@ function renderSettingsSemesterHoliday(body){
     '<input type="checkbox" id="autoHolidayCheckbox"'+(state.settings.autoHolidaysEnabled?' checked':'')+'><span class="mark"></span>법정 공휴일 자동으로 휴업일 처리</label>';
   html += '<label class="check'+(state.settings.autoSuneungEnabled?' progress on':'')+'" id="autoSuneungToggle" style="margin-bottom:10px;">'+
     '<input type="checkbox" id="autoSuneungCheckbox"'+(state.settings.autoSuneungEnabled?' checked':'')+'><span class="mark"></span>수능일(11월 셋째 주 목요일) 자동으로 휴업일 처리</label>';
-  html += '<p class="small-note">참고용으로 자동 표시돼요. 학교 자체 재량휴업일 등 실제 학사일정과 다르면 목록에서 개별적으로 빼거나(제외), 아래에서 직접 추가해주세요.</p>';
+  html += '<p class="small-note">참고용으로 자동 표시돼요. 나이스 학사일정을 불러와 쓰신다면 이 토글은 꺼두셔도 돼요. 학교 자체 재량휴업일 등 실제 학사일정과 다르면 목록에서 개별적으로 빼거나(제외), 아래에서 직접 추가해주세요.</p>';
   html += '<div id="holidayMergedList"></div>';
   html += '<div class="field-row"><label>날짜 <span class="req">*</span></label><div class="add-row"><input type="date" id="holidayDate"><button class="btn small" id="addHolidayBtn">추가</button></div></div></div>';
-
-  html += '<div class="settings-section"><h3>나이스(NEIS) 학사일정 불러오기</h3>';
-  html += '<p class="small-note">학교의 나이스 학사일정을 자동으로 불러와요. 나이스 오픈API(open.neis.go.kr)에서 발급받은 인증키가 필요해요. 이 기능은 학교/브라우저 환경에 따라 정상 동작하지 않을 수 있어요 — 안 되면 알려주세요, 바로 고쳐드릴게요.</p>';
-  html += '<div class="field-row"><label>API 인증키</label><input type="text" id="neisKey" value="'+escapeHtml(state.settings.neisKey||'')+'" placeholder="open.neis.go.kr에서 발급"></div>';
-  if(state.settings.neisSchul && state.settings.neisSchoolName){
-    html += '<div class="field-row"><label>선택된 학교</label>'+
-      '<div class="list-row"><div class="grow">'+escapeHtml(state.settings.neisSchoolName)+'</div>'+
-      '<span id="neisSchoolChangeBtn" style="font-size:0.75rem;color:var(--coral-deep);text-decoration:underline;cursor:pointer;">변경</span></div></div>';
-  } else {
-    html += '<div class="field-row"><label>학교 이름</label><div class="add-row"><input type="text" id="neisSchoolSearch" placeholder="예: 한세고등학교" style="flex:1;"><button class="btn ghost small" id="neisSearchBtn">검색</button></div></div>'+
-      '<div id="neisSearchResults"></div>';
-  }
-  html += '<button class="btn ghost small" id="neisFetchBtn" style="margin-top:6px;">학사일정 불러오기</button>'+
-    '<div id="neisStatus" class="small-note" style="margin-top:8px;"></div></div>';
   body.innerHTML = html;
 
   renderHolidayMergedList(body);
@@ -2334,40 +2451,98 @@ function renderSettingsSemesterHoliday(body){
     if(state.settings.holidays.indexOf(date)===-1) state.settings.holidays.push(date);
     saveSettings().then(function(){ renderSettingsSemesterHoliday(body); flashSaved(); });
   });
-  var neisKeyInput = document.getElementById('neisKey');
-  neisKeyInput.addEventListener('change', function(){
-    state.settings.neisKey = this.value.trim();
-    saveSettings();
-  });
+}
+
+function renderSettingsNeis(body){
+  var html = '<div class="settings-section"><h3>나이스(NEIS) 학사일정 불러오기</h3>';
+  html += '<p class="small-note">학교 이름을 검색해서 나이스 학사일정을 자동으로 불러와요. 이 기능은 학교/브라우저 환경에 따라 정상 동작하지 않을 수 있어요 — 안 되면 알려주세요, 바로 고쳐드릴게요.</p>';
+  if(state.settings.neisSchul && state.settings.neisSchoolName){
+    html += '<div class="field-row"><label>선택된 학교</label>'+
+      '<div class="list-row"><div class="grow">'+escapeHtml(state.settings.neisSchoolName)+'</div>'+
+      '<span id="neisSchoolChangeBtn" style="font-size:0.75rem;color:var(--coral-deep);text-decoration:underline;cursor:pointer;">변경</span></div></div>';
+  } else {
+    html += '<div class="field-row"><label>학교 이름</label><div class="add-row"><input type="text" id="neisSchoolSearch" placeholder="예: 효성고등학교" style="flex:1;"><button class="btn ghost small" id="neisSearchBtn">검색</button></div></div>'+
+      '<div id="neisSearchResults"></div>';
+  }
+  html += '<button class="btn ghost small" id="neisFetchBtn" style="margin-top:6px;">학사일정 불러오기</button>'+
+    '<div id="neisStatus" class="small-note" style="margin-top:8px;"></div></div>';
+
+  html += '<div class="settings-section"><h3>나이스에서 불러온 일정</h3>'+
+    '<p class="small-note">불러온 항목마다 실제로 수업이 없는 날인지 정해주세요. 정하기 전까지는 "행사"로 취급되어(수업이 정상 진행되는 것으로 보고) 수업일수 계산에 영향을 주지 않아요.</p>'+
+    '<div id="neisEventsList"></div></div>';
+  body.innerHTML = html;
+
+  renderNeisEventsList(body);
+
   var neisSchoolChangeBtn = document.getElementById('neisSchoolChangeBtn');
   if(neisSchoolChangeBtn){
     neisSchoolChangeBtn.addEventListener('click', function(){
       state.settings.neisSchul = '';
       state.settings.neisOfcdc = '';
       state.settings.neisSchoolName = '';
-      saveSettings().then(function(){ renderSettingsSemesterHoliday(body); flashSaved(); });
+      saveSettings().then(function(){ renderSettingsNeis(body); flashSaved(); });
     });
   }
   var neisSearchBtn = document.getElementById('neisSearchBtn');
   if(neisSearchBtn){
     neisSearchBtn.addEventListener('click', function(){
-      var key = document.getElementById('neisKey').value.trim();
       var name = document.getElementById('neisSchoolSearch').value.trim();
-      state.settings.neisKey = key;
-      saveSettings();
-      searchNeisSchool(key, name, body);
+      searchNeisSchool(NEIS_KEY, name, body);
     });
   }
   document.getElementById('neisFetchBtn').addEventListener('click', function(){
-    var key = document.getElementById('neisKey').value.trim();
-    state.settings.neisKey = key;
-    saveSettings();
-    fetchNeisSchedule(key, state.settings.neisOfcdc, state.settings.neisSchul, document.getElementById('neisStatus'), body);
+    fetchNeisSchedule(NEIS_KEY, state.settings.neisOfcdc, state.settings.neisSchul, document.getElementById('neisStatus'), body);
+  });
+}
+
+function renderNeisEventsList(body){
+  var listEl = document.getElementById('neisEventsList');
+  if(!listEl) return;
+  var today = todayStr();
+  var items = (state.settings.neisHolidays||[]).filter(function(h){ return h.date >= today; })
+    .slice().sort(function(a,b){ return a.date<b.date?-1:1; });
+  if(!items.length){
+    listEl.innerHTML = '<p class="small-note">불러온 일정이 없어요.</p>';
+    return;
+  }
+  var html = '';
+  items.forEach(function(h){
+    var isHoliday = h.classified==='holiday';
+    html += '<div class="list-row neis-event-row"><div class="grow">'+niceDate(h.date)+' ('+dayKorOf(h.date)+') · '+escapeHtml(h.name)+
+      (h.sbtr?(' <span class="sub">나이스 분류: '+escapeHtml(h.sbtr)+'</span>'):'')+
+      (h.grades&&h.grades.length?(' <span class="sub">'+h.grades.join(', ')+'</span>'):'')+
+      '</div>'+
+      '<div class="neis-classify">'+
+        '<span class="neis-classify-btn'+(!isHoliday?' active':'')+'" data-date="'+h.date+'" data-val="event">행사</span>'+
+        '<span class="neis-classify-btn'+(isHoliday?' active':'')+'" data-date="'+h.date+'" data-val="holiday">휴업일</span>'+
+      '</div>'+
+      '<span class="del-neis-h" data-date="'+h.date+'">✕</span></div>';
+  });
+  listEl.innerHTML = html;
+  listEl.querySelectorAll('.neis-classify-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var dt = btn.getAttribute('data-date'), val = btn.getAttribute('data-val');
+      var entry = (state.settings.neisHolidays||[]).find(function(h){ return h.date===dt; });
+      if(entry){ entry.classified = val; }
+      saveSettings().then(function(){
+        renderNeisEventsList(body);
+        renderHolidayMergedList(body);
+        flashSaved();
+      });
+    });
+  });
+  listEl.querySelectorAll('.del-neis-h').forEach(function(x){
+    x.addEventListener('click', function(){
+      var dt = x.getAttribute('data-date');
+      state.settings.neisHolidays = (state.settings.neisHolidays||[]).filter(function(h){ return h.date!==dt; });
+      saveSettings().then(function(){ renderNeisEventsList(body); renderHolidayMergedList(body); flashSaved(); });
+    });
   });
 }
 
 function renderHolidayMergedList(body){
   var listEl = document.getElementById('holidayMergedList');
+  if(!listEl) return;
   var today = todayStr();
   var merged = [];
   state.settings.holidays.forEach(function(h){ merged.push({ date:h, name:'직접 등록', source:'custom' }); });
@@ -2385,11 +2560,11 @@ function renderHolidayMergedList(body){
     });
   }
   (state.settings.neisHolidays||[]).forEach(function(h){
-    if(h.date < today) return;
+    if(h.date < today || h.classified!=='holiday') return;
     merged.push({ date:h.date, name:h.name+(h.grades&&h.grades.length?(' · '+h.grades.join(',')):''), source:'neis' });
   });
   merged.sort(function(a,b){ return a.date<b.date?-1:1; });
-  var html = '<p class="small-note" style="margin-top:0;">오늘 이후 일정만 보여드려요.</p>';
+  var html = '<p class="small-note" style="margin-top:0;">오늘 이후 일정만 보여드려요. (나이스로 불러온 항목 중 "휴업일"로 지정한 것만 여기 표시돼요 — 전체 목록은 아래 "나이스에서 불러온 일정"에서 볼 수 있어요.)</p>';
   merged.forEach(function(h){
     var delClass = h.source==='auto' ? 'del-auto-h' : (h.source==='neis' ? 'del-neis-h' : 'del-h');
     var tag = h.source==='auto' ? ' <span class="sub">자동</span>' : (h.source==='neis' ? ' <span class="sub">나이스</span>' : '');
@@ -2434,7 +2609,7 @@ function renderHolidayMergedList(body){
     x.addEventListener('click', function(){
       var dt = x.getAttribute('data-date');
       state.settings.neisHolidays = (state.settings.neisHolidays||[]).filter(function(h){ return h.date!==dt; });
-      saveSettings().then(function(){ renderHolidayMergedList(body); flashSaved(); });
+      saveSettings().then(function(){ renderHolidayMergedList(body); flashSaved(); renderNeisEventsList(body); });
     });
   });
   listEl.querySelectorAll('.restore-h').forEach(function(x){
@@ -2569,7 +2744,7 @@ function init(){
     if(state.settings.autoSuneungEnabled === undefined) state.settings.autoSuneungEnabled = true;
     if(!state.settings.customDdays) state.settings.customDdays = [];
     if(!state.settings.neisHolidays) state.settings.neisHolidays = [];
-    if(state.settings.neisKey === undefined) state.settings.neisKey = '';
+    state.settings.neisHolidays.forEach(function(h){ if(!h.classified) h.classified = 'event'; });
     if(state.settings.neisOfcdc === undefined) state.settings.neisOfcdc = '';
     if(state.settings.neisSchul === undefined) state.settings.neisSchul = '';
     if(state.settings.neisSchoolName === undefined) state.settings.neisSchoolName = '';
