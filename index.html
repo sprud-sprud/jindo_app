@@ -447,6 +447,10 @@
   table.sched-table{width:100%;border-collapse:collapse;font-size:0.7812rem;}
   table.sched-table th, table.sched-table td{padding:4px 3px;text-align:center;}
   table.sched-table th{color:var(--ink-soft);font-weight:600;}
+  table.sched-table .lunch-row td{
+    background:var(--butter-bg); color:var(--butter-deep); font-weight:600;
+    font-size:0.6875rem; padding:5px 3px; border-radius:6px;
+  }
   table.sched-table select{padding:5px 2px;font-size:0.7188rem;border-radius:7px;}
   .sched-scroll{overflow-x:auto;margin:0 -4px;padding:0 4px;}
 
@@ -516,6 +520,10 @@
   .pt-period-time{font-size:0.5938rem;}
   .pt-cell.pt-class{
     font-weight:700; border:1px solid; word-break:keep-all;
+  }
+  .pt-cell.pt-lunch{
+    background:var(--butter-bg); color:var(--butter-deep); font-weight:600;
+    min-height:24px; font-size:0.6875rem; margin:1px 0;
   }
 
   .small-note{font-size:0.75rem;color:var(--ink-soft);line-height:1.6;margin:6px 0 10px;}
@@ -680,13 +688,21 @@ function escapeHtml(s){
 function defaultSettings(){
   var schedule = {};
   DAYS.forEach(function(d){ schedule[d] = new Array(7).fill(null); });
-  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisKey:'', neisOfcdc:'', neisSchul:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00' };
+  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisKey:'', neisOfcdc:'', neisSchul:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00', lunchAfterPeriod:4, lunchDuration:50 };
 }
 var SCHOOL_LEVEL_DURATION = { elementary:40, middle:45, high:50 };
 function computePeriodTime(periodIndex){
-  var mins = timeToMinutes(state.settings.firstPeriodStart||'09:00') + periodIndex*((state.settings.classDuration||50)+(state.settings.breakDuration||10));
+  var classDur = state.settings.classDuration||50;
+  var breakDur = state.settings.breakDuration||10;
+  var lunchAfter = state.settings.lunchAfterPeriod||0;
+  var lunchDur = state.settings.lunchDuration||50;
+  var mins = timeToMinutes(state.settings.firstPeriodStart||'09:00');
+  for(var i=0; i<periodIndex; i++){
+    mins += classDur;
+    mins += ((i+1)===lunchAfter) ? lunchDur : breakDur;
+  }
   var start = minutesToTime(mins);
-  var end = minutesToTime(mins + (state.settings.classDuration||50));
+  var end = minutesToTime(mins + classDur);
   return { start:start, end:end };
 }
 function timeToMinutes(t){
@@ -1158,6 +1174,9 @@ function renderPrettyTimetable(){
         html += '<div class="pt-cell"></div>';
       }
     });
+    if(state.settings.lunchAfterPeriod===(p+1)){
+      html += '<div class="pt-cell pt-lunch" style="grid-column:1 / -1;">점심시간</div>';
+    }
   }
   html += '</div></div>';
   html += '<button class="btn ghost small" id="saveTimetableImgBtn" style="width:100%;margin-top:10px;">이미지로 저장</button>';
@@ -1966,6 +1985,17 @@ function buildScheduleHtml(){
     '<div class="field-row" style="flex:1;"><label>1교시 시작 시각</label><input type="time" id="firstPeriodInput" value="'+escapeHtml(state.settings.firstPeriodStart)+'"></div>'+
     '<div class="field-row" style="flex:1;"><label>수업시간(분)</label><input type="text" id="classDurationInput" inputmode="numeric" value="'+state.settings.classDuration+'"'+(state.settings.schoolLevel!=='custom'?' disabled':'')+'></div>'+
     '<div class="field-row" style="flex:1;"><label>쉬는시간(분)</label><input type="text" id="breakDurationInput" inputmode="numeric" value="'+state.settings.breakDuration+'"></div>'+
+    '</div>';
+  html += '<div class="add-row">'+
+    '<div class="field-row" style="flex:1;"><label>점심시간 위치</label><select id="lunchAfterSelect">'+
+      '<option value="0"'+(state.settings.lunchAfterPeriod===0?' selected':'')+'>없음</option>'+
+      (function(){
+        var opts = '';
+        for(var i=1;i<=n;i++){ opts += '<option value="'+i+'"'+(state.settings.lunchAfterPeriod===i?' selected':'')+'>'+i+'교시 이후</option>'; }
+        return opts;
+      })()+
+      '</select></div>'+
+    '<div class="field-row" style="flex:1;"><label>점심시간(분)</label><input type="text" id="lunchDurationInput" inputmode="numeric" value="'+state.settings.lunchDuration+'"'+(state.settings.lunchAfterPeriod===0?' disabled':'')+'></div>'+
     '</div></div>';
 
   html += '<div class="settings-section"><h3>시간표</h3>';
@@ -1990,6 +2020,11 @@ function buildScheduleHtml(){
       html += '</select></td>';
     });
     html += '</tr>';
+    if(state.settings.lunchAfterPeriod===(p+1)){
+      var lp = computePeriodTime(p+1);
+      var lunchStart = pt.end;
+      html += '<tr class="lunch-row"><td colspan="'+(DAYS.length+1)+'">점심시간 · '+lunchStart+'~'+lp.start+'</td></tr>';
+    }
   }
   html += '</tbody></table></div></div>';
   html += '<div class="settings-section"><h3>예쁜 시간표</h3>'+
@@ -2032,6 +2067,21 @@ function bindScheduleEvents(body){
     breakDurationInput.addEventListener('change', function(){
       var v = Math.max(0, Math.min(60, parseInt(this.value,10)||10));
       state.settings.breakDuration = v;
+      saveSettings().then(function(){ renderSettingsTimetable(body); flashSaved(); });
+    });
+  }
+  var lunchAfterSelect = document.getElementById('lunchAfterSelect');
+  if(lunchAfterSelect){
+    lunchAfterSelect.addEventListener('change', function(){
+      state.settings.lunchAfterPeriod = parseInt(this.value,10)||0;
+      saveSettings().then(function(){ renderSettingsTimetable(body); flashSaved(); });
+    });
+  }
+  var lunchDurationInput = document.getElementById('lunchDurationInput');
+  if(lunchDurationInput){
+    lunchDurationInput.addEventListener('change', function(){
+      var v = Math.max(10, Math.min(120, parseInt(this.value,10)||50));
+      state.settings.lunchDuration = v;
       saveSettings().then(function(){ renderSettingsTimetable(body); flashSaved(); });
     });
   }
@@ -2456,6 +2506,8 @@ function init(){
     if(!state.settings.classDuration) state.settings.classDuration = 50;
     if(state.settings.breakDuration===undefined) state.settings.breakDuration = 10;
     if(!state.settings.firstPeriodStart) state.settings.firstPeriodStart = '09:00';
+    if(state.settings.lunchAfterPeriod===undefined) state.settings.lunchAfterPeriod = 4;
+    if(!state.settings.lunchDuration) state.settings.lunchDuration = 50;
     applyFontScale();
     state.settings.exams = state.settings.exams.map(function(e){
       if(!e.type || !e.startDate){
