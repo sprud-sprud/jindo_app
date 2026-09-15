@@ -37,11 +37,11 @@
     --rose-deep:#733B36;
     --stamp:#7E9A74;
     --holiday-bg:#FCE8E6;
-    --shadow: 0 1px 8px rgba(34,37,42,0.06);
+    --shadow: 0 2px 14px rgba(34,37,42,0.07);
     --shadow-soft: 0 1px 3px rgba(34,37,42,0.05);
-    --radius: 12px;
+    --radius: 16px;
   }
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;overscroll-behavior:none;}
   body{
     background:var(--bg);
@@ -66,7 +66,7 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    border-bottom:1px solid var(--line);
+    background:var(--bg);
   }
   .topbar .logo{
     font-family:'Pretendard', sans-serif;
@@ -110,28 +110,36 @@
     font-weight:600;
     font-size:0.8438rem;
     border:none;
-    border-radius:8px;
-    padding:10px 16px;
+    border-radius:11px;
+    padding:11px 16px;
     cursor:pointer;
     background:var(--coral-deep);
     color:#fff;
-    transition:opacity .12s ease;
+    transition:opacity .12s ease, transform .1s ease;
   }
-  button.btn:active{opacity:.85;}
+  button.btn:active{opacity:.85;transform:scale(.97);}
   button.btn.ghost{
     background:var(--card);
     color:var(--coral-deep);
     border:1px solid var(--coral);
   }
   button.btn.coral{background:var(--coral-deep);}
-  button.btn.small{padding:6px 12px;font-size:0.7812rem;border-radius:7px;}
+  button.btn.small{padding:7px 12px;font-size:0.7812rem;border-radius:9px;}
   button.icon-btn{
     background:none;border:none;cursor:pointer;
     font-size:0.9375rem;color:var(--ink-soft);
     padding:6px 10px;border-radius:7px;
     font-family:inherit;
+    transition:background .12s ease, transform .1s ease;
   }
-  button.icon-btn:active{background:var(--bg-soft);}
+  button.icon-btn:active{background:var(--bg-soft);transform:scale(.94);}
+
+  .status-btn, .tab-pill, .card-folded, .excuse-btn, .nav-btn, .class-chip, .check, .now-focus-badge, .stamp{
+    transition:transform .1s ease, opacity .1s ease, background .12s ease, border-color .12s ease;
+  }
+  .status-btn:active, .tab-pill:active, .card-folded:active, .excuse-btn:active, .nav-btn:active, .check:active{
+    transform:scale(.96);
+  }
 
   .date-nav{
     display:flex;align-items:center;justify-content:space-between;
@@ -157,7 +165,6 @@
     box-shadow:var(--shadow);
     padding:16px 16px 14px;
     margin-bottom:14px;
-    border:1px solid var(--line);
     overflow:visible;
   }
   .card .card-head{
@@ -180,14 +187,23 @@
     font-size:0.875rem;
     color:var(--ink);
     background:var(--bg-soft);
-    border:1px solid var(--line);
-    border-radius:7px;
-    padding:9px 10px;
+    border:1px solid transparent;
+    border-radius:10px;
+    padding:10px 12px;
     width:100%;
     outline:none;
+    transition:border-color .12s ease, background .12s ease;
+  }
+  select{
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2375726C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 10px center;
+    background-size:15px;
+    padding-right:32px;
   }
   select:focus, input[type=text]:focus, textarea:focus{
-    border-color:var(--sage);
+    border-color:var(--coral);background:var(--card);
   }
   .field-row{margin-bottom:9px;}
   .field-row label{
@@ -240,7 +256,7 @@
     color:var(--ink-soft);cursor:pointer;
   }
   .status-btn .status-ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .status-btn.on{background:var(--coral-bg);border-color:var(--coral);color:var(--coral-deep);}
+  .status-btn.on{background:var(--ink);border-color:var(--ink);color:#fff;}
 
   .prev-progress{
     font-size:0.75rem;color:var(--ink-soft);background:var(--bg-soft);
@@ -330,7 +346,7 @@
     display:flex;align-items:center;justify-content:center;
     padding:3px;border-radius:5px;cursor:pointer;color:var(--ink-faint);
   }
-  .mini-status-btn.on{background:var(--coral-bg);}
+  .mini-status-btn.on{background:var(--coral-bg);color:var(--coral-deep);}
   .remove-extra{cursor:pointer;color:var(--rose-deep,#B3435C);font-size:0.875rem;padding:2px 4px;}
   .extra-add-row{display:flex;gap:8px;align-items:center;}
   .extra-add-row select{flex:1;}
@@ -389,12 +405,12 @@
   .stamp{
     padding:3px 9px;
     border-radius:6px;
-    border:1px solid var(--sage-deep);
-    color:var(--sage-deep);
+    border:1px solid var(--line);
+    color:var(--ink-soft);
     font-weight:600;
     font-size:0.7188rem;
     letter-spacing:0.2px;
-    background: var(--sage-bg);
+    background: var(--bg-soft);
     margin-left:auto;
   }
   .card-head{gap:8px;}
@@ -402,7 +418,7 @@
   .bottom-nav{
     position:sticky;bottom:0;left:0;right:0;
     background:var(--card);
-    border-top:1px solid var(--line);
+    box-shadow:0 -1px 10px rgba(34,37,42,0.05);
     display:flex;
     padding:8px 4px calc(8px + env(safe-area-inset-bottom));
     max-width:520px;
@@ -419,12 +435,14 @@
     padding:6px 2px;
     border-radius:12px;
   }
-  .nav-btn .ico{display:flex;align-items:center;justify-content:center;}
+  .nav-btn .ico{display:flex;align-items:center;justify-content:center;transition:transform .12s ease;}
   .nav-btn .ico svg{display:block;}
   .nav-btn.active{color:var(--coral-deep);background:var(--coral-bg);}
+  .nav-btn.active .ico{transform:scale(1.08);}
 
-  section.view{display:none;}
+  section.view{display:none;opacity:0;transform:translateY(6px);transition:opacity .18s ease, transform .18s ease;}
   section.view.active{display:block;}
+  section.view.active.in{opacity:1;transform:translateY(0);}
 
   /* 달력 */
   .cal-head{display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px;}
@@ -469,7 +487,7 @@
   /* 반별 현황 */
   .class-card{
     background:var(--card);border-radius:var(--radius);
-    border:1px solid var(--line);box-shadow:var(--shadow-soft);
+    box-shadow:var(--shadow-soft);
     padding:14px 16px;margin-bottom:12px;
     display:flex; gap:14px; align-items:flex-start;
   }
@@ -487,21 +505,24 @@
   .badge.slow{background:var(--coral-bg);color:var(--coral-deep);}
   .badge.fast{background:var(--sage-bg);color:var(--sage-deep);}
   .progress-bar-bg{
-    height:11px;background:var(--bg-soft);border-radius:20px;overflow:hidden;margin:8px 0;
+    height:8px;background:var(--bg-soft);border-radius:20px;overflow:hidden;margin:8px 0;
   }
-  .progress-bar-fill{height:100%;border-radius:20px;transition:width .3s ease;}
-  .class-card .meta{font-size:0.7812rem;color:var(--ink-soft);line-height:1.7;}
-  .class-card .meta b{color:var(--ink);}
+  .progress-bar-fill{height:100%;border-radius:20px;transition:width .3s ease;background:var(--ink);}
+  .stat-hero{display:flex;align-items:baseline;gap:7px;}
+  .stat-hero-num{font-size:1.75rem;font-weight:800;color:var(--ink);line-height:1;letter-spacing:-0.5px;}
+  .stat-hero-sub{font-size:0.75rem;color:var(--ink-soft);}
+  .class-card .meta{font-size:0.75rem;color:var(--ink-faint);line-height:1.7;}
+  .class-card .meta b{color:var(--ink-soft);font-weight:600;}
 
   /* D-day */
   .exam-card{
     background:var(--card);border-radius:var(--radius);
-    border:1px solid var(--line);box-shadow:var(--shadow-soft);
+    box-shadow:var(--shadow-soft);
     padding:16px;margin-bottom:14px;
   }
   .exam-card .exam-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
   .exam-card .exam-name{font-size:1rem;font-weight:600;}
-  .exam-card .dday{font-family:'Pretendard',sans-serif;font-size:1.375rem;font-weight:700;color:var(--coral-deep);letter-spacing:-0.3px;}
+  .exam-card .dday{font-family:'Pretendard',sans-serif;font-size:1.5rem;font-weight:800;color:var(--coral-deep);letter-spacing:-0.5px;}
   .exam-card .exam-date{font-size:0.75rem;color:var(--ink-soft);margin-bottom:10px;}
   .pace-row{
     display:flex;justify-content:space-between;align-items:center;
@@ -509,6 +530,8 @@
     font-size:0.8125rem;
   }
   .pace-row .cname{font-weight:600;}
+  .pace-row .pace-num{font-weight:800;font-size:0.9375rem;color:var(--ink);}
+  .pace-row .pace-num-sub{color:var(--ink-faint);font-weight:500;font-size:0.75rem;}
   .pace-tag{font-size:0.7188rem;font-weight:600;padding:2px 8px;border-radius:10px;}
   .pace-tag.ok{background:var(--sage-bg);color:var(--sage-deep);}
   .pace-tag.tight{background:var(--butter-bg);color:var(--butter-deep);}
@@ -517,7 +540,7 @@
   /* 설정 */
   .settings-section{
     background:var(--card);border-radius:var(--radius);
-    border:1px solid var(--line);box-shadow:var(--shadow-soft);
+    box-shadow:var(--shadow-soft);
     padding:16px;margin-bottom:14px;
   }
   .settings-section h3{margin:0 0 12px;font-size:1.0625rem;display:flex;align-items:center;gap:6px;}
@@ -536,7 +559,7 @@
     background:var(--butter-bg); color:var(--butter-deep); font-weight:600;
     font-size:0.6875rem; padding:5px 3px; border-radius:6px;
   }
-  table.sched-table select{padding:5px 2px;font-size:0.7188rem;border-radius:7px;}
+  table.sched-table select{padding:5px 16px 5px 2px;font-size:0.7188rem;border-radius:7px;background-position:right 2px center;background-size:11px;}
   .sched-scroll{overflow-x:auto;margin:0 -4px;padding:0 4px;}
 
   .list-row{
@@ -667,7 +690,7 @@
   </div>
 
   <main>
-    <section class="view active" id="view-today"></section>
+    <section class="view active in" id="view-today"></section>
     <section class="view" id="view-calendar"></section>
     <section class="view" id="view-classes"></section>
     <section class="view" id="view-exam"></section>
@@ -720,11 +743,11 @@ var STATUS_META = {
 var EXCUSE_REASONS = ['연가','병가','출장','기타'];
 
 // 진행 단계를 막대 4개(신호 세기 형태)로 표시하는 단순 아이콘. 채워진 막대 수 = 진행 단계.
+// 색을 직접 정하지 않고 currentColor를 써서, 놓이는 자리(버튼 선택 상태, 일반 텍스트 등)의 색을 그대로 따라간다.
+// 색을 여러 개 쓰지 않고 의미가 있는 곳(완료, 선택됨)에만 코랄을 쓰기 위함.
 function statusIconSvg(status, size){
   size = size || 16;
   var idx = STATUS_ORDER.indexOf(status);
-  var colorMap = { pending:'var(--ink-faint)', inProgress:'var(--butter-deep)', practicing:'var(--lav-deep)', done:'var(--sage-deep)' };
-  var color = colorMap[status] || 'var(--ink-faint)';
   var heights = [6,9.5,13,16.5];
   var bars = '';
   for(var i=0;i<4;i++){
@@ -733,7 +756,7 @@ function statusIconSvg(status, size){
     var y = 18 - h;
     var filled = i <= idx;
     bars += '<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="3.1" height="'+h+'" rx="1" '+
-      (filled ? ('fill="'+color+'"') : ('fill="none" stroke="var(--ink-faint)" stroke-width="1.2"'))+'></rect>';
+      (filled ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.5"')+'></rect>';
   }
   return '<svg viewBox="0 0 20 20" width="'+size+'" height="'+size+'" xmlns="http://www.w3.org/2000/svg">'+bars+'</svg>';
 }
@@ -2272,8 +2295,9 @@ function renderClasses(){
     if(st.total===0){
       html += '<p class="small-note" style="margin:0;">진도 계획이 등록되지 않았어요.</p>';
     } else {
+      html += '<div class="stat-hero"><span class="stat-hero-num">'+pct+'%</span><span class="stat-hero-sub">'+st.done+' / '+st.total+' 항목 완료</span></div>';
       html += '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:'+pct+'%;background:'+c.color+'"></div></div>';
-      html += '<div class="meta"><b>'+st.done+' / '+st.total+'</b> 항목 완료 ('+pct+'%)<br>';
+      html += '<div class="meta">';
       html += st.last ? ('마지막 진도: <b>'+escapeHtml(st.last.title)+'</b>'+(st.last.donePage?(' · '+escapeHtml(st.last.donePage)):'')+' · <span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle;">'+statusIconSvg(st.last.status||'done',13)+(STATUS_META[st.last.status||'done']?STATUS_META[st.last.status||'done'].short:'')+'</span> · '+niceDate(st.last.doneDate) ) : '아직 기록된 진도가 없어요';
       html += '<br>';
       html += st.next ? ('다음 진도: <b>'+escapeHtml(st.next.title)+'</b>') : '남은 진도 항목이 없어요';
@@ -2345,7 +2369,7 @@ function renderExam(){
             }
             html += '<div class="pace-row"><span class="cname" style="color:'+darken(c.color,0.45)+'">'+escapeHtml(c.name)+
               (st.rangeLabel?' <span style="font-size:0.6875rem;color:var(--ink-faint);font-weight:400;">('+st.rangeLabel+')</span>':'')+'</span>'+
-              '<span>남은 '+Math.max(remain,0)+'개 · 수업 '+sessions+'회</span>'+
+              '<span><span class="pace-num-sub">남은 </span><span class="pace-num">'+Math.max(remain,0)+'개</span><span class="pace-num-sub"> · 수업 '+sessions+'회</span></span>'+
               '<span class="pace-tag '+tagClass+'">'+tag+'</span></div>';
           });
         }
@@ -3313,8 +3337,9 @@ function renderAll(){
 }
 function switchView(name){
   state.currentView = name;
-  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
-  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active','in'); });
+  var target = document.getElementById('view-'+name);
+  target.classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(function(b){
     b.classList.toggle('active', b.getAttribute('data-view')===name);
   });
@@ -3323,6 +3348,10 @@ function switchView(name){
   else if(name==='classes') renderClasses();
   else if(name==='exam') renderExam();
   else if(name==='settings') renderSettings();
+  // 탭을 눌렀을 때 화면이 훅 바뀌지 않고 살짝 떠오르듯 전환되도록 (네이티브 앱 느낌)
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){ target.classList.add('in'); });
+  });
 }
 window.__gotoView = switchView;
 
