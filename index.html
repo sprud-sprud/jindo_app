@@ -137,10 +137,10 @@
   }
   button.icon-btn:active{background:var(--bg-soft);transform:scale(.94);}
 
-  .status-btn, .tab-pill, .card-folded, .excuse-btn, .nav-btn, .class-chip, .check, .now-focus-badge, .stamp{
+  .status-btn, .tab-pill, .card-folded, .excuse-btn, .nav-btn, .class-chip, .check, .now-focus-badge, .stamp, .settings-menu-row{
     transition:transform .1s ease, opacity .1s ease, background .12s ease, border-color .12s ease;
   }
-  .status-btn:active, .tab-pill:active, .card-folded:active, .excuse-btn:active, .nav-btn:active, .check:active{
+  .status-btn:active, .tab-pill:active, .card-folded:active, .excuse-btn:active, .nav-btn:active, .check:active, .settings-menu-row:active{
     transform:scale(.96);
   }
 
@@ -535,9 +535,10 @@
   .pace-row .pace-num{font-weight:800;font-size:0.9375rem;color:var(--ink);}
   .pace-row .pace-num-sub{color:var(--ink-faint);font-weight:500;font-size:0.75rem;}
   .pace-tag{font-size:0.7188rem;font-weight:600;padding:2px 8px;border-radius:10px;}
-  .pace-tag.ok{background:var(--gray-100);color:var(--gray-700);}
+  .pace-tag.ok{background:var(--card);color:var(--gray-700);border:1px solid var(--gray-400);}
   .pace-tag.tight{background:var(--gray-400);color:#fff;}
   .pace-tag.danger{background:var(--coral-deep);color:#fff;}
+  .pace-tag.done{background:var(--ink);color:#fff;}
 
   /* 설정 */
   .settings-section{
@@ -584,6 +585,20 @@
   .plan-item-row.done .grow{text-decoration:line-through;}
 
   .tab-pills{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;}
+
+  .settings-back{
+    display:inline-block;font-size:0.875rem;font-weight:600;color:var(--ink-soft);
+    cursor:pointer;margin-bottom:4px;padding:4px 0;
+  }
+  .settings-menu{display:flex;flex-direction:column;gap:8px;}
+  .settings-menu-row{
+    display:flex;align-items:center;gap:10px;
+    background:var(--card);border-radius:14px;box-shadow:var(--shadow-soft);
+    padding:16px;cursor:pointer;
+  }
+  .settings-menu-row .smr-title{font-size:0.9375rem;font-weight:700;color:var(--ink);margin-bottom:2px;}
+  .settings-menu-row .smr-sub{font-size:0.75rem;color:var(--ink-soft);}
+  .settings-menu-row .smr-arrow{font-size:1.25rem;color:var(--ink-faint);flex-shrink:0;}
   .tab-pill{
     flex-shrink:0;padding:7px 14px;border-radius:8px;
     font-size:0.8125rem;font-weight:600;color:var(--ink-soft);
@@ -986,7 +1001,7 @@ var state = {
   currentDate: todayStr(),
   calYm: ymOf(todayStr()),
   calSelected: null,
-  settingsTab: 'classes',
+  settingsTab: null,
   planClassId: null,
   uiExpanded: {} // '날짜-교시' 형태로, 완료돼서 접힌 카드를 펼쳐봤는지 기억(새로고침하면 초기화됨)
 };
@@ -1692,8 +1707,8 @@ function renderToday(){
   }
   el.innerHTML = html;
 
-  document.getElementById('prevDay').onclick = function(){ state.currentDate = addDays(state.currentDate,-1); goToDate(state.currentDate); };
-  document.getElementById('nextDay').onclick = function(){ state.currentDate = addDays(state.currentDate,1); goToDate(state.currentDate); };
+  document.getElementById('prevDay').onclick = function(){ animateDayChange(-1); };
+  document.getElementById('nextDay').onclick = function(){ animateDayChange(1); };
   var jt = document.getElementById('jumpTodayTop');
   if(jt) jt.onclick = function(){ state.currentDate = todayStr(); goToDate(state.currentDate); };
   bindExtrasEvents(el, d, function(){ renderToday(); });
@@ -1908,14 +1923,6 @@ function bindDayCardEvents(container, dateStr){
   });
 }
 
-// 카드 하나의 상태가 바뀐 뒤(특히 완료 처리), 잠깐 뒤에 오늘 화면 전체를 다시 그려서
-// 완료된 카드는 접어서 아래로, 남은 카드는 위로 정렬한다. (여러 번 눌러도 마지막 한 번만 실행)
-var reorderTimer = null;
-function scheduleReorder(){
-  clearTimeout(reorderTimer);
-  reorderTimer = setTimeout(function(){ renderToday(); }, 500);
-}
-
 // 실수로 잘못 눌러서 저장되는 걸 막기 위한 확인 모달. 확인하면 onConfirm 실행.
 function openSaveConfirmModal(onConfirm){
   var overlay = document.createElement('div');
@@ -2066,8 +2073,7 @@ function bindOneCard(card, dateStr, isFocus){
       });
       Promise.all([ setRecord(dateStr, period, entry), savePlans() ]).then(function(){
         flashSaved();
-        rerenderCard();
-        scheduleReorder(); // 저장 직후 잠깐 뒤 완료 구역으로 접혀 이동 (포커스 카드면 그대로 상단에 남음)
+        renderToday(); // 지연 없이 바로 완료 구역으로 접어서 내려보낸다
       });
     });
   });
@@ -2077,17 +2083,65 @@ function bindOneCard(card, dateStr, isFocus){
       var reason = btn.getAttribute('data-reason');
       if(!confirm(reason+'로 이 시간을 표시할까요? 입력한 진도 기록은 지워져요.')) return;
       var rec = { period:period, classId:classId, excused:true, reason:reason };
-      setRecord(dateStr, period, rec).then(function(){ scheduleReorder(); rerenderCard(); });
+      setRecord(dateStr, period, rec).then(function(){ renderToday(); });
     });
   });
 }
 
 function goToDate(dateStr){
   var ym = ymOf(dateStr);
-  ensureMonth(ym).then(function(){
+  return ensureMonth(ym).then(function(){
     if(state.currentView==='today') renderToday();
   });
 }
+
+// 날짜를 바꿀 때 화면이 옆으로 살짝 밀리면서 바뀌게 (스와이프/화살표 버튼 공통으로 사용)
+function animateDayChange(direction){
+  var el = document.getElementById('view-today');
+  if(!el) return;
+  var exitX = direction>0 ? -16 : 16;   // 다음날(+1)이면 왼쪽으로 나가고, 전날(-1)이면 오른쪽으로 나간다
+  var enterX = direction>0 ? 16 : -16;  // 새 내용은 반대쪽에서 들어온다
+  el.style.transition = 'opacity .14s ease, transform .14s ease';
+  el.style.opacity = '0';
+  el.style.transform = 'translateX('+exitX+'px)';
+  setTimeout(function(){
+    state.currentDate = addDays(state.currentDate, direction);
+    goToDate(state.currentDate).then(function(){
+      el.style.transition = 'none';
+      el.style.transform = 'translateX('+enterX+'px)';
+      el.style.opacity = '0';
+      void el.offsetWidth; // 강제 리플로우: transition 없이 순간이동시킨 뒤, 그 다음에 애니메이션을 다시 켠다
+      el.style.transition = 'opacity .16s ease, transform .16s ease';
+      requestAnimationFrame(function(){
+        el.style.transform = 'translateX(0)';
+        el.style.opacity = '1';
+      });
+    });
+  }, 140);
+}
+
+(function setupTodaySwipe(){
+  var el = document.getElementById('view-today');
+  if(!el) return;
+  var startX=0, startY=0, tracking=false;
+  el.addEventListener('touchstart', function(e){
+    if(e.touches.length!==1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    tracking = true;
+  }, {passive:true});
+  el.addEventListener('touchend', function(e){
+    if(!tracking) return;
+    tracking = false;
+    var endX = e.changedTouches[0].clientX;
+    var endY = e.changedTouches[0].clientY;
+    var dx = endX - startX, dy = endY - startY;
+    // 가로로 충분히, 세로보다 뚜렷하게 밀었을 때만 스와이프로 인정 (스크롤과 헷갈리지 않게)
+    if(Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)*1.5){
+      animateDayChange(dx < 0 ? 1 : -1);
+    }
+  }, {passive:true});
+})();
 
 // ---------- render: CALENDAR ----------
 function renderCalendar(){
@@ -2361,7 +2415,7 @@ function renderExam(){
             var sessions = diff>0 ? countSessions(c.id, sessionsFrom, ex.startDate) : 0;
             var tag='', tagClass='';
             if(planItems.length===0){ tag='진도계획 없음'; tagClass='tight'; }
-            else if(remain<=0){ tag='진도 완료'; tagClass='ok'; }
+            else if(remain<=0){ tag='진도 완료'; tagClass='done'; }
             else if(diff<=0){ tag='시험 지남'; tagClass='danger'; }
             else if(sessions===0){ tag='남은 수업 없음'; tagClass='danger'; }
             else {
@@ -2433,10 +2487,38 @@ function renderExam(){
 // ---------- render: SETTINGS ----------
 function renderSettings(){
   var el = document.getElementById('view-settings');
-  var tabs = [['schedule','시간표'],['calendar','학사일정'],['plans','진도계획'],['data','데이터 관리']];
-  if(state.settingsTab==='classes') state.settingsTab='schedule';
-  var html = '<h1 style="margin:6px 0 16px;">설정</h1>';
+  if(!state.settingsTab){
+    renderSettingsLanding(el);
+    return;
+  }
+  var titles = { schedule:'시간표', calendar:'학사일정', plans:'진도계획', data:'데이터 관리' };
+  var html = '<div class="settings-back" id="settingsBackBtn">‹ 설정</div>';
+  html += '<h1 style="margin:2px 0 16px;">'+titles[state.settingsTab]+'</h1>';
+  html += '<div id="settingsBody"></div>';
+  el.innerHTML = html;
+  document.getElementById('settingsBackBtn').addEventListener('click', function(){
+    state.settingsTab = null;
+    state.scheduleSubTab = null;
+    state.academicSubTab = null;
+    renderSettings();
+  });
+  var body = document.getElementById('settingsBody');
+  if(state.settingsTab==='schedule') renderSettingsTimetable(body);
+  else if(state.settingsTab==='calendar') renderSettingsCalendar(body);
+  else if(state.settingsTab==='plans') renderSettingsPlans(body);
+  else if(state.settingsTab==='data') renderSettingsData(body);
+}
+
+// 설정 첫 화면: 한 번에 다 안 보여주고, 카테고리 목록만 먼저 보여준 다음 눌러야 세부 설정이 뜨게 한다.
+function renderSettingsLanding(el){
   var curScale = state.settings.fontScale || 1;
+  var cats = [
+    ['schedule','시간표','반 목록 · 일과시간 · 내 시간표'],
+    ['calendar','학사일정','시험 · 방학 · 공휴일'],
+    ['plans','진도계획','반별 진도 목록 관리'],
+    ['data','데이터 관리','백업 · 복원 · 내보내기']
+  ];
+  var html = '<h1 style="margin:6px 0 16px;">설정</h1>';
   html += '<div class="fontsize-control">'+
     '<span class="fs-label">글씨 크기</span>'+
     '<div style="display:flex;align-items:center;gap:10px;">'+
@@ -2444,14 +2526,16 @@ function renderSettings(){
       '<span class="fs-value">'+Math.round(curScale*100)+'%</span>'+
       '<button class="fs-btn" id="fsPlus">+</button>'+
     '</div></div>';
-  html += '<div class="tab-pills">';
-  tabs.forEach(function(t){
-    html += '<div class="tab-pill'+(state.settingsTab===t[0]?' active':'')+'" data-tab="'+t[0]+'">'+t[1]+'</div>';
+  html += '<div class="settings-menu">';
+  cats.forEach(function(c){
+    html += '<div class="settings-menu-row" data-tab="'+c[0]+'">'+
+      '<div class="grow"><div class="smr-title">'+c[1]+'</div><div class="smr-sub">'+c[2]+'</div></div>'+
+      '<span class="smr-arrow">›</span></div>';
   });
-  html += '</div><div id="settingsBody"></div>';
+  html += '</div>';
   el.innerHTML = html;
-  el.querySelectorAll('.tab-pill').forEach(function(p){
-    p.addEventListener('click', function(){ state.settingsTab = p.getAttribute('data-tab'); renderSettings(); });
+  el.querySelectorAll('.settings-menu-row').forEach(function(row){
+    row.addEventListener('click', function(){ state.settingsTab = row.getAttribute('data-tab'); renderSettings(); });
   });
   function changeScale(delta){
     var idx = closestScaleIndex(state.settings.fontScale||1);
@@ -2462,25 +2546,38 @@ function renderSettings(){
   }
   document.getElementById('fsMinus').addEventListener('click', function(){ changeScale(-1); });
   document.getElementById('fsPlus').addEventListener('click', function(){ changeScale(1); });
-  var body = document.getElementById('settingsBody');
-  if(state.settingsTab==='schedule') renderSettingsTimetable(body);
-  else if(state.settingsTab==='calendar') renderSettingsCalendar(body);
-  else if(state.settingsTab==='plans') renderSettingsPlans(body);
-  else if(state.settingsTab==='data') renderSettingsData(body);
+}
+
+// 설정 카테고리 안에서 쓰는 드릴다운 메뉴(목록 -> 탭 하나 -> 세부 화면) 공통 헬퍼
+function renderDrillMenu(container, items, onSelect){
+  var html = '<div class="settings-menu">';
+  items.forEach(function(it){
+    html += '<div class="settings-menu-row" data-key="'+it[0]+'">'+
+      '<div class="grow"><div class="smr-title">'+it[1]+'</div>'+(it[2]?('<div class="smr-sub">'+it[2]+'</div>'):'')+'</div>'+
+      '<span class="smr-arrow">›</span></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+  container.querySelectorAll('.settings-menu-row').forEach(function(row){
+    row.addEventListener('click', function(){ onSelect(row.getAttribute('data-key')); });
+  });
 }
 
 function renderSettingsTimetable(body){
-  if(!state.scheduleSubTab) state.scheduleSubTab = 'myTimetable';
-  var subTabs = [['myTimetable','내 시간표'],['classes','반 목록'],['periods','일과 시간']];
-  var html = '<div class="tab-pills sub-pills">';
-  subTabs.forEach(function(t){
-    html += '<div class="tab-pill sub'+(state.scheduleSubTab===t[0]?' active':'')+'" data-subtab="'+t[0]+'">'+t[1]+'</div>';
-  });
-  html += '</div><div id="scheduleSubBody"></div>';
+  if(!state.scheduleSubTab){
+    renderDrillMenu(body, [
+      ['classes','반 목록','담당하는 반을 추가·관리해요'],
+      ['periods','일과 시간','학교급, 1교시 시작 시각 등'],
+      ['myTimetable','내 시간표','요일별 시간표 편집, 이미지 저장']
+    ], function(key){ state.scheduleSubTab = key; renderSettingsTimetable(body); });
+    return;
+  }
+  var titles = { classes:'반 목록', periods:'일과 시간', myTimetable:'내 시간표' };
+  var html = '<div class="settings-back sub-back">‹ 시간표</div>'+
+    '<h2 style="margin:2px 0 14px;font-size:1.0625rem;">'+titles[state.scheduleSubTab]+'</h2>'+
+    '<div id="scheduleSubBody"></div>';
   body.innerHTML = html;
-  body.querySelectorAll('.tab-pill[data-subtab]').forEach(function(p){
-    p.addEventListener('click', function(){ state.scheduleSubTab = p.getAttribute('data-subtab'); renderSettingsTimetable(body); });
-  });
+  body.querySelector('.sub-back').addEventListener('click', function(){ state.scheduleSubTab = null; renderSettingsTimetable(body); });
   var sub = document.getElementById('scheduleSubBody');
   if(state.scheduleSubTab==='classes'){
     sub.innerHTML = buildClassesHtml();
@@ -2755,17 +2852,23 @@ function bindMyTimetableEvents(body){
 }
 
 function renderSettingsCalendar(body){
-  if(!state.academicSubTab) state.academicSubTab = 'writtenExam';
-  var subTabs = [['writtenExam','지필평가'],['mock','모의고사'],['performance','수행평가'],['event','학교행사'],['calendar','학기·휴업일'],['neis','나이스 불러오기']];
-  var html = '<div class="tab-pills sub-pills">';
-  subTabs.forEach(function(t){
-    html += '<div class="tab-pill sub'+(state.academicSubTab===t[0]?' active':'')+'" data-subtab="'+t[0]+'">'+t[1]+'</div>';
-  });
-  html += '</div><div id="academicBody"></div>';
+  if(!state.academicSubTab){
+    renderDrillMenu(body, [
+      ['writtenExam','지필평가','중간·기말고사 등록'],
+      ['mock','모의고사','모의고사 일정 등록'],
+      ['performance','수행평가','수행평가 일정 등록'],
+      ['event','학교행사','학교 행사 일정 등록'],
+      ['calendar','학기·휴업일','학기 기간, 공휴일 설정'],
+      ['neis','나이스 불러오기','학사일정 자동으로 불러오기']
+    ], function(key){ state.academicSubTab = key; renderSettingsCalendar(body); });
+    return;
+  }
+  var titles = { writtenExam:'지필평가', mock:'모의고사', performance:'수행평가', event:'학교행사', calendar:'학기·휴업일', neis:'나이스 불러오기' };
+  var html = '<div class="settings-back sub-back">‹ 학사일정</div>'+
+    '<h2 style="margin:2px 0 14px;font-size:1.0625rem;">'+titles[state.academicSubTab]+'</h2>'+
+    '<div id="academicBody"></div>';
   body.innerHTML = html;
-  body.querySelectorAll('.tab-pill').forEach(function(p){
-    p.addEventListener('click', function(){ state.academicSubTab = p.getAttribute('data-subtab'); renderSettingsCalendar(body); });
-  });
+  body.querySelector('.sub-back').addEventListener('click', function(){ state.academicSubTab = null; renderSettingsCalendar(body); });
   var sub = document.getElementById('academicBody');
   if(state.academicSubTab==='calendar') renderSettingsSemesterHoliday(sub);
   else if(state.academicSubTab==='neis') renderSettingsNeis(sub);
@@ -3350,7 +3453,7 @@ function switchView(name){
   else if(name==='calendar') renderCalendar();
   else if(name==='classes') renderClasses();
   else if(name==='exam') renderExam();
-  else if(name==='settings') renderSettings();
+  else if(name==='settings'){ state.settingsTab = null; state.scheduleSubTab = null; state.academicSubTab = null; renderSettings(); }
   // 탭을 눌렀을 때 화면이 훅 바뀌지 않고 살짝 떠오르듯 전환되도록 (네이티브 앱 느낌)
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){ target.classList.add('in'); });
@@ -3512,16 +3615,18 @@ function bindOnboardingEvents(ov){
   });
   var gotoSchedule = ov.querySelector('#obGotoSchedule');
   if(gotoSchedule) gotoSchedule.onclick = function(){
-    state.settingsTab = 'schedule';
-    state.scheduleSubTab = 'myTimetable';
     finishOnboarding();
     switchView('settings');
+    state.settingsTab = 'schedule';
+    state.scheduleSubTab = 'myTimetable';
+    renderSettings();
   };
   var gotoPlans = ov.querySelector('#obGotoPlans');
   if(gotoPlans) gotoPlans.onclick = function(){
-    state.settingsTab = 'plans';
     finishOnboarding();
     switchView('settings');
+    state.settingsTab = 'plans';
+    renderSettings();
   };
 }
 
