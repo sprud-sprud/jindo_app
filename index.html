@@ -1930,9 +1930,10 @@ function renderDayCard(dateStr, period, classId, isFocus){
 
   // '지난 진도' 조회 영역: 교사가 수업 직전 가장 먼저 확인하는 정보라 카드 맨 위에
   // 크고 굵은 하이라이트 블록(Hero)으로 따로 분리해서 보여준다.
+  // 오늘 날짜를 포함해서, 이 반에 저장된 진도 기록 중 가장 최근 것을 무조건 보여준다.
   var cst = classStats(classId);
   var prevHtml;
-  if(cst.last && cst.last.doneDate && cst.last.doneDate < dateStr){
+  if(cst.last && cst.last.doneDate){
     var lm = STATUS_META[cst.last.status||'done'];
     prevHtml = '<div class="prev-hero"><div class="prev-hero-label">지난 진도</div>'+
       '<div class="prev-hero-value">'+escapeHtml(cst.last.title)+(cst.last.donePage?('<br>'+escapeHtml(cst.last.donePage)):'')+'</div>'+
