@@ -283,6 +283,33 @@
   }
   .completed-zone-label::after{content:'';flex:1;height:1px;background:var(--line);}
 
+  .onboarding-overlay{
+    position:fixed;inset:0;background:var(--bg);z-index:9000;
+    display:flex;flex-direction:column;padding:28px 20px 20px;overflow-y:auto;
+  }
+  .onboarding-dots{display:flex;gap:6px;justify-content:center;margin-bottom:28px;flex-shrink:0;}
+  .onboarding-dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:all .2s ease;}
+  .onboarding-dot.active{background:var(--coral-deep);width:20px;border-radius:4px;}
+  .onboarding-body{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:420px;margin:0 auto;width:100%;}
+  .onboarding-icon{width:52px;height:52px;margin:0 auto 18px;display:block;}
+  .onboarding-title{font-size:1.3125rem;font-weight:800;text-align:center;margin-bottom:10px;color:var(--ink);word-break:keep-all;}
+  .onboarding-desc{font-size:0.875rem;color:var(--ink-soft);text-align:center;line-height:1.65;margin-bottom:6px;word-break:keep-all;}
+  .onboarding-actions{max-width:420px;margin:20px auto 0;width:100%;flex-shrink:0;}
+  .onboarding-actions .btn{margin-bottom:8px;}
+  .onboarding-back{display:inline-block;font-size:0.75rem;color:var(--ink-faint);text-decoration:underline;margin-bottom:16px;cursor:pointer;}
+  .onboarding-skip{display:block;text-align:center;font-size:0.75rem;color:var(--ink-faint);text-decoration:underline;margin-top:12px;cursor:pointer;}
+  .onboarding-class-list{margin:14px 0;}
+  .onboarding-class-chip{
+    display:inline-flex;align-items:center;gap:6px;background:var(--bg-soft);
+    border-radius:20px;padding:6px 8px 6px 14px;margin:0 6px 6px 0;font-size:0.8125rem;font-weight:600;
+  }
+  .onboarding-class-chip .x{cursor:pointer;color:var(--ink-faint);width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:50%;}
+  .onboarding-class-chip .x:hover{background:var(--line);}
+
+  .report-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .report-row:last-child{border-bottom:none;}
+  .report-stat{font-size:0.8125rem;color:var(--ink-soft);text-align:right;line-height:1.4;}
+
   .memo-toggle{
     font-size:0.75rem;color:var(--ink-soft);text-decoration:underline;
     cursor:pointer;display:inline-block;margin-top:9px;
@@ -810,7 +837,7 @@ function escapeHtml(s){
 function defaultSettings(){
   var schedule = {};
   DAYS.forEach(function(d){ schedule[d] = new Array(7).fill(null); });
-  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisOfcdc:'', neisSchul:'', neisSchoolName:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00', lunchAfterPeriod:4, lunchDuration:50 };
+  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisOfcdc:'', neisSchul:'', neisSchoolName:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00', lunchAfterPeriod:4, lunchDuration:50, onboardingDone:false };
 }
 var SCHOOL_LEVEL_DURATION = { elementary:40, middle:45, high:50 };
 function computePeriodTime(periodIndex){
@@ -2229,6 +2256,7 @@ function renderClasses(){
   stats.sort(function(a,b){ return a.stat.ratio-b.stat.ratio; });
 
   var html = '<h1 style="margin:6px 0 4px;">반별 진도 현황</h1>';
+  html += '<button class="btn ghost small" id="weeklyReportBtn" style="margin-bottom:10px;">지난주 진도 요약 보기</button>';
   html += '<p class="small-note" style="margin:0 0 14px;">진도가 늘수록 나무가 자라요 — 새싹 → 줄기·잎 → 나무 → 꽃나무 → 열매나무</p>';
   stats.forEach(function(s){
     var c = s.cls, st = s.stat;
@@ -2254,6 +2282,7 @@ function renderClasses(){
     html += '</div></div>';
   });
   el.innerHTML = html;
+  document.getElementById('weeklyReportBtn').addEventListener('click', function(){ showWeeklyReportModal(false); });
 }
 
 // ---------- render: EXAM D-day ----------
@@ -3317,6 +3346,212 @@ function hideSplash(){
   }, 1500);
 }
 
+// ---------- 온보딩(첫 설정) 마법사 ----------
+// 반을 하나도 등록하지 않은 완전 새 설치일 때만 자동으로 뜬다. 완료하거나 건너뛰면 다시 안 뜬다.
+var onboardingStep = 1;
+var ONBOARDING_STEPS = 4;
+
+function shouldShowOnboarding(){
+  return !!(state.settings && state.settings.onboardingDone === false);
+}
+function finishOnboarding(){
+  state.settings.onboardingDone = true;
+  saveSettings();
+  var ov = document.getElementById('onboardingOverlay');
+  if(ov) ov.remove();
+}
+function renderOnboarding(){
+  if(!shouldShowOnboarding()) return;
+  var ov = document.getElementById('onboardingOverlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'onboardingOverlay';
+    ov.className = 'onboarding-overlay';
+    document.body.appendChild(ov);
+  }
+  var dots = '<div class="onboarding-dots">';
+  for(var i=1;i<=ONBOARDING_STEPS;i++){ dots += '<div class="onboarding-dot'+(i===onboardingStep?' active':'')+'"></div>'; }
+  dots += '</div>';
+
+  var backLink = onboardingStep>1 ? '<span class="onboarding-back" id="obBack">← 이전</span>' : '';
+  var body, actions;
+
+  if(onboardingStep===1){
+    body = '<div class="onboarding-body">'+
+      '<svg class="onboarding-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M22,54 L42,74 L80,28" fill="none" stroke="var(--coral-deep)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"></path></svg>'+
+      '<div class="onboarding-title">진도수첩에 오신 걸 환영해요</div>'+
+      '<div class="onboarding-desc">반과 시간표, 진도 계획을 등록해두면<br>매일 수업 진도를 훨씬 빠르게 기록할 수 있어요.<br>3분이면 충분해요.</div>'+
+    '</div>';
+    actions = '<div class="onboarding-actions">'+
+      '<button class="btn" id="obNext" style="width:100%;">시작하기</button>'+
+      '<span class="onboarding-skip" id="obSkip">나중에 할게요</span>'+
+    '</div>';
+  } else if(onboardingStep===2){
+    var chips = state.settings.classes.map(function(c){
+      return '<span class="onboarding-class-chip">'+escapeHtml(c.name)+(c.grade?(' · '+escapeHtml(c.grade)):'')+'<span class="x" data-id="'+c.id+'">✕</span></span>';
+    }).join('');
+    body = '<div class="onboarding-body">'+
+      backLink+
+      '<div class="onboarding-title">담당하시는 반을 등록해주세요</div>'+
+      '<div class="onboarding-desc">나중에 설정에서 언제든 추가·수정할 수 있어요.</div>'+
+      '<div class="add-row" style="margin-top:16px;">'+
+        '<input type="text" id="obClassName" placeholder="반 이름 (예: 2학년 3반)" style="flex:2;">'+
+        '<input type="text" id="obClassGrade" placeholder="학년 (선택)" style="flex:1;">'+
+      '</div>'+
+      '<button class="btn ghost small" id="obAddClass" style="width:100%;margin-top:8px;">+ 반 추가</button>'+
+      '<div class="onboarding-class-list">'+chips+'</div>'+
+    '</div>';
+    actions = '<div class="onboarding-actions">'+
+      '<button class="btn" id="obNext" style="width:100%;">다음</button>'+
+      '<span class="onboarding-skip" id="obSkip">나중에 할게요</span>'+
+    '</div>';
+  } else if(onboardingStep===3){
+    var lvl = state.settings.schoolLevel||'high';
+    body = '<div class="onboarding-body">'+
+      backLink+
+      '<div class="onboarding-title">일과시간을 설정해주세요</div>'+
+      '<div class="onboarding-desc">학교급을 고르면 수업시간이 자동으로 채워져요.</div>'+
+      '<div class="field-row" style="margin-top:16px;"><label>학교급</label><select id="obSchoolLevel">'+
+        '<option value="elementary"'+(lvl==='elementary'?' selected':'')+'>초등학교 (40분)</option>'+
+        '<option value="middle"'+(lvl==='middle'?' selected':'')+'>중학교 (45분)</option>'+
+        '<option value="high"'+(lvl==='high'?' selected':'')+'>고등학교 (50분)</option>'+
+        '<option value="custom"'+(lvl==='custom'?' selected':'')+'>직접 입력</option>'+
+      '</select></div>'+
+      '<div class="field-row"><label>1교시 시작 시각</label><input type="time" id="obFirstPeriod" value="'+escapeHtml(state.settings.firstPeriodStart)+'"></div>'+
+    '</div>';
+    actions = '<div class="onboarding-actions">'+
+      '<button class="btn" id="obNext" style="width:100%;">다음</button>'+
+      '<span class="onboarding-skip" id="obSkip">나중에 할게요</span>'+
+    '</div>';
+  } else {
+    body = '<div class="onboarding-body">'+
+      backLink+
+      '<div class="onboarding-title">이제 시간표랑 진도계획만 채우면 끝이에요</div>'+
+      '<div class="onboarding-desc">요일별로 몇 교시에 어떤 반 수업이 있는지, 각 반은 어떤 순서로 진도를 나갈지 설정에서 입력해주세요. 조금 더 자세히 입력하는 부분이라 설정 탭에서 이어서 하시는 걸 추천해요.</div>'+
+    '</div>';
+    actions = '<div class="onboarding-actions">'+
+      '<button class="btn" id="obGotoSchedule" style="width:100%;">시간표 설정하러 가기</button>'+
+      '<button class="btn ghost" id="obGotoPlans" style="width:100%;">진도계획 입력하러 가기</button>'+
+      '<span class="onboarding-skip" id="obSkip">나중에 하고 오늘 화면으로 갈게요</span>'+
+    '</div>';
+  }
+
+  ov.innerHTML = dots + body + actions;
+  bindOnboardingEvents(ov);
+}
+function bindOnboardingEvents(ov){
+  var backBtn = ov.querySelector('#obBack');
+  if(backBtn) backBtn.onclick = function(){ onboardingStep--; renderOnboarding(); };
+  var skipBtn = ov.querySelector('#obSkip');
+  if(skipBtn) skipBtn.onclick = function(){ finishOnboarding(); };
+  var nextBtn = ov.querySelector('#obNext');
+  if(nextBtn) nextBtn.onclick = function(){
+    if(onboardingStep===3){
+      var lvlSel = ov.querySelector('#obSchoolLevel');
+      var firstInput = ov.querySelector('#obFirstPeriod');
+      state.settings.schoolLevel = lvlSel.value;
+      if(lvlSel.value !== 'custom' && SCHOOL_LEVEL_DURATION[lvlSel.value]) state.settings.classDuration = SCHOOL_LEVEL_DURATION[lvlSel.value];
+      state.settings.firstPeriodStart = firstInput.value || '09:00';
+      saveSettings();
+    }
+    onboardingStep++;
+    renderOnboarding();
+  };
+  var addClassBtn = ov.querySelector('#obAddClass');
+  if(addClassBtn) addClassBtn.onclick = function(){
+    var nameInput = ov.querySelector('#obClassName');
+    var gradeInput = ov.querySelector('#obClassGrade');
+    var name = nameInput.value.trim();
+    if(!name) return;
+    var color = CLASS_COLORS[state.settings.classes.length % CLASS_COLORS.length];
+    var id = uid();
+    state.settings.classes.push({ id:id, name:name, color:color, grade: gradeInput.value.trim() });
+    state.plans[id] = [];
+    nameInput.value=''; gradeInput.value='';
+    Promise.all([saveSettings(), savePlans()]).then(renderOnboarding);
+  };
+  ov.querySelectorAll('.onboarding-class-chip .x').forEach(function(x){
+    x.onclick = function(){
+      var id = x.getAttribute('data-id');
+      state.settings.classes = state.settings.classes.filter(function(c){ return c.id!==id; });
+      delete state.plans[id];
+      Promise.all([saveSettings(), savePlans()]).then(renderOnboarding);
+    };
+  });
+  var gotoSchedule = ov.querySelector('#obGotoSchedule');
+  if(gotoSchedule) gotoSchedule.onclick = function(){
+    state.settingsTab = 'schedule';
+    state.scheduleSubTab = 'myTimetable';
+    finishOnboarding();
+    switchView('settings');
+  };
+  var gotoPlans = ov.querySelector('#obGotoPlans');
+  if(gotoPlans) gotoPlans.onclick = function(){
+    state.settingsTab = 'plans';
+    finishOnboarding();
+    switchView('settings');
+  };
+}
+
+// ---------- 주간 진도 리포트 ----------
+// 월요일에 앱을 열면 지난주(지난 월~일) 요약을 자동으로 팝업으로 보여준다. 하루에 한 번만.
+// '반별 현황' 탭에서도 언제든 같은 팝업을 다시 볼 수 있다.
+function getLastWeekRange(dateStr){
+  var d = parseDate(dateStr);
+  var dow = d.getDay(); // 0=일,1=월...
+  var diffToMonday = (dow===0) ? 6 : dow-1;
+  var thisMonday = addDays(dateStr, -diffToMonday);
+  var lastMonday = addDays(thisMonday, -7);
+  var lastSunday = addDays(thisMonday, -1);
+  return { start:lastMonday, end:lastSunday };
+}
+function weeklyReportData(startStr, endStr){
+  return state.settings.classes.map(function(c){
+    var items = state.plans[c.id] || [];
+    var doneItems = items.filter(function(it){ return it.doneDate && it.doneDate>=startStr && it.doneDate<=endStr; });
+    var sessionCount = 0;
+    var d = startStr, guard = 0;
+    while(d <= endStr && guard < 14){
+      getRecords(d).forEach(function(r){ if(r.classId===c.id && (r.saved || r.excused)) sessionCount++; });
+      d = addDays(d, 1);
+      guard++;
+    }
+    return { cls:c, doneCount: doneItems.length, sessionCount: sessionCount };
+  });
+}
+function showWeeklyReportModal(markShown){
+  var range = getLastWeekRange(todayStr());
+  Promise.all([ ensureMonth(ymOf(range.start)), ensureMonth(ymOf(range.end)) ]).then(function(){
+    var data = weeklyReportData(range.start, range.end);
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    var rows = data.map(function(d){
+      return '<div class="report-row"><span class="class-chip" style="background:'+d.cls.color+'">'+escapeHtml(d.cls.name)+'</span>'+
+        '<span class="report-stat">'+(d.doneCount>0 ? ('완료 항목 '+d.doneCount+'개') : '완료된 항목 없음')+'<br>수업 기록 '+d.sessionCount+'회</span></div>';
+    }).join('');
+    overlay.innerHTML = '<div class="modal-box">'+
+      '<h3>지난주 진도 요약</h3>'+
+      '<p class="small-note" style="margin:-8px 0 14px;">'+niceDate(range.start)+' ~ '+niceDate(range.end)+'</p>'+
+      (data.length ? rows : '<p class="small-note">등록된 반이 없어요.</p>')+
+      '<div class="modal-actions"><button class="btn" id="reportCloseBtn" style="width:100%;">확인했어요</button></div>'+
+    '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+    overlay.querySelector('#reportCloseBtn').addEventListener('click', function(){ overlay.remove(); });
+    if(markShown){
+      state.settings.lastWeeklyReportShown = todayStr();
+      saveSettings();
+    }
+  });
+}
+function maybeShowWeeklyReport(){
+  if(!state.settings.onboardingDone) return; // 아직 온보딩 중인 신규 사용자는 건너뜀
+  if(state.settings.classes.length===0) return;
+  if(dayKorOf(todayStr()) !== '월') return;
+  if(state.settings.lastWeeklyReportShown === todayStr()) return;
+  showWeeklyReportModal(true);
+}
+
 function init(){
   Promise.all([
     loadJSON('settings', null),
@@ -3342,6 +3577,10 @@ function init(){
     if(!state.settings.firstPeriodStart) state.settings.firstPeriodStart = '09:00';
     if(state.settings.lunchAfterPeriod===undefined) state.settings.lunchAfterPeriod = 4;
     if(!state.settings.lunchDuration) state.settings.lunchDuration = 50;
+    if(state.settings.onboardingDone === undefined){
+      // 이 업데이트 이전부터 이미 반을 등록해서 쓰던 사용자는 온보딩을 볼 필요 없음
+      state.settings.onboardingDone = state.settings.classes.length > 0;
+    }
     applyFontScale();
     state.settings.exams = state.settings.exams.map(function(e){
       if(!e.type || !e.startDate){
@@ -3365,6 +3604,8 @@ function init(){
     return ensureMonth(ymOf(state.currentDate));
   }).then(function(){
     renderAll();
+    renderOnboarding();
+    maybeShowWeeklyReport();
     hideSplash();
   }).catch(function(e){
     console.error(e);
@@ -3372,6 +3613,7 @@ function init(){
     state.plans = {};
     applyFontScale();
     renderAll();
+    renderOnboarding();
     hideSplash();
   });
 }
