@@ -248,6 +248,41 @@
   }
   .prev-progress b{color:var(--ink);font-weight:600;}
 
+  .prev-hero{background:var(--coral-bg);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+  .prev-hero-label{font-size:0.6875rem;font-weight:700;color:var(--coral-deep);letter-spacing:.03em;margin-bottom:6px;}
+  .prev-hero-value{font-size:1.125rem;font-weight:800;color:var(--ink);line-height:1.35;word-break:keep-all;}
+  .prev-hero-meta{font-size:0.75rem;color:var(--ink-soft);margin-top:6px;display:flex;align-items:center;gap:4px;}
+  .prev-hero.empty .prev-hero-value{font-size:0.9375rem;font-weight:600;color:var(--ink-soft);}
+  .card-section-divider{
+    display:flex;align-items:center;gap:8px;margin:14px 0 10px;
+    font-size:0.6875rem;font-weight:700;color:var(--ink-faint);letter-spacing:.04em;
+  }
+  .card-section-divider::after{content:'';flex:1;height:1px;background:var(--line);}
+
+  .now-focus-badge{
+    display:inline-flex;align-items:center;gap:4px;font-size:0.6875rem;font-weight:700;
+    color:var(--coral-deep);background:var(--coral-bg);border-radius:20px;padding:3px 9px;margin-bottom:8px;
+  }
+  .card.is-focus{border:1.5px solid var(--coral);box-shadow:0 2px 10px rgba(0,0,0,0.05);}
+
+  .card-folded{
+    display:flex;align-items:center;gap:8px;background:var(--bg-soft);
+    border-radius:10px;padding:9px 12px;margin-bottom:8px;cursor:pointer;
+    opacity:0.72;transition:opacity .2s ease;
+    animation:foldIn .6s ease;
+  }
+  .card-folded:hover{opacity:0.95;}
+  .card-folded .period-tag-mini{font-size:0.6875rem;color:var(--ink-faint);white-space:nowrap;}
+  .card-folded .class-chip{flex-shrink:0;}
+  .card-folded .folded-progress{flex:1;min-width:0;font-size:0.8125rem;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  @keyframes foldIn{from{opacity:0;transform:translateY(-4px);}to{opacity:0.72;transform:translateY(0);}}
+
+  .completed-zone-label{
+    font-size:0.6875rem;font-weight:700;color:var(--ink-faint);letter-spacing:.04em;
+    margin:18px 0 8px;display:flex;align-items:center;gap:8px;
+  }
+  .completed-zone-label::after{content:'';flex:1;height:1px;background:var(--line);}
+
   .memo-toggle{
     font-size:0.75rem;color:var(--ink-soft);text-decoration:underline;
     cursor:pointer;display:inline-block;margin-top:9px;
@@ -569,9 +604,35 @@
   .transfer-code-box .tc-label{font-size:0.75rem;color:var(--coral-deep);margin-bottom:4px;}
   .transfer-code-box .tc-code{font-size:1.75rem;font-weight:700;letter-spacing:3px;color:var(--coral-deep);font-family:'Pretendard',sans-serif;}
   .transfer-code-box .tc-note{font-size:0.6875rem;color:var(--ink-soft);margin-top:4px;}
+
+  #customSplash{
+    position:fixed;inset:0;background:#fff;z-index:99999;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transition:opacity .4s ease;
+  }
+  #customSplash.fade-out{opacity:0;pointer-events:none;}
+  #customSplash svg{width:76px;height:76px;}
+  #customSplash .splash-check-path{
+    fill:none;stroke:var(--coral-deep);stroke-width:8;
+    stroke-linecap:round;stroke-linejoin:round;
+    stroke-dasharray:90;stroke-dashoffset:90;
+    animation:splashDrawCheck 1s cubic-bezier(.65,0,.35,1) forwards .2s;
+  }
+  #customSplash .splash-title{
+    margin-top:16px;font-size:1.0625rem;font-weight:700;color:var(--ink);
+    letter-spacing:.01em;opacity:0;animation:splashFadeInText .5s ease forwards 1.05s;
+  }
+  @keyframes splashDrawCheck{to{stroke-dashoffset:0;}}
+  @keyframes splashFadeInText{to{opacity:1;transform:translateY(0);}from{opacity:0;transform:translateY(4px);}}
 </style>
 </head>
 <body>
+<div id="customSplash">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path class="splash-check-path" d="M22,54 L42,74 L80,28"></path>
+  </svg>
+  <div class="splash-title">진도수첩</div>
+</div>
 <div id="app">
   <div class="topbar">
     <div class="logo"><span class="dot"></span>진도수첩</div>
@@ -779,6 +840,45 @@ function periodTagLabel(period){
   var pt = computePeriodTime(period-1);
   return period+'교시 · '+pt.start+'~'+pt.end;
 }
+
+// 오늘 시간표 중 '지금 진행 중'이거나 '바로 다음에 들어갈' 교시를 찾는다. (오늘 볼 때만 의미가 있음)
+function findFocusPeriod(sched){
+  if(!sched || !sched.length) return null;
+  var now = new Date();
+  var nowMins = now.getHours()*60 + now.getMinutes();
+  var inProgress = null, next = null, nextStart = Infinity;
+  sched.forEach(function(s){
+    var pt = computePeriodTime(s.period-1);
+    var startMins = timeToMinutes(pt.start), endMins = timeToMinutes(pt.end);
+    if(nowMins >= startMins && nowMins < endMins){ inProgress = s; }
+    else if(startMins > nowMins && startMins < nextStart){ next = s; nextStart = startMins; }
+  });
+  return inProgress || next || null;
+}
+
+// 진도 입력이 끝난(완료/개인사정) 카드는 하단에 접어서 보여준다. 눌러서 펼치면 renderDayCard로 대체된다.
+function renderFoldedCard(dateStr, period, classId){
+  var cls = getClass(classId);
+  if(!cls) return '';
+  var rec = getRecords(dateStr).find(function(r){ return r.period===period; }) || {};
+  var summary;
+  if(rec.excused){
+    summary = (rec.reason||'개인 사정')+'로 수업 없음';
+  } else {
+    var items = state.plans[classId] || [];
+    var mainItemId = recMainItemId(rec);
+    var idx = items.findIndex(function(i){ return i.id===mainItemId; });
+    var it = idx!==-1 ? items[idx] : null;
+    summary = it ? ((idx+1)+'. '+it.title+(rec.pageText?(' · '+rec.pageText):'')) : '진도 기록 완료';
+  }
+  var status = rec.excused ? 'done' : (rec.status||'done');
+  return '<div class="card-folded" data-period="'+period+'" data-class="'+classId+'">'+
+    '<span class="period-tag-mini">'+period+'교시</span>'+
+    '<span class="class-chip" style="background:'+cls.color+';font-size:0.6875rem;padding:2px 7px;">'+escapeHtml(cls.name)+'</span>'+
+    '<span class="folded-progress">'+escapeHtml(summary)+'</span>'+
+    statusIconSvg(status,14)+
+  '</div>';
+}
 var FONT_SCALE_STEPS = [0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2, 1.3];
 function applyFontScale(){
   var scale = (state.settings && state.settings.fontScale) || 1;
@@ -835,7 +935,8 @@ var state = {
   calYm: ymOf(todayStr()),
   calSelected: null,
   settingsTab: 'classes',
-  planClassId: null
+  planClassId: null,
+  uiExpanded: {} // '날짜-교시' 형태로, 완료돼서 접힌 카드를 펼쳐봤는지 기억(새로고침하면 초기화됨)
 };
 
 // ---------- storage (localStorage 기반) ----------
@@ -1501,10 +1602,39 @@ function renderToday(){
     } else if(sched.length === 0){
       html += '<div class="empty-state"><h2>수업이 없는 날</h2><p>이 날엔 시간표에 등록된 수업이 없어요.</p></div>';
     } else {
+      var focus = isToday ? findFocusPeriod(sched) : null;
+      var activeEntries = [], completedPeriods = [], focusEntry = null;
       sched.forEach(function(s){
         var blockingExam = findBlockingExam(d, s.classId, s.period);
-        html += blockingExam ? renderExamBlockedCard(s.period, s.classId, blockingExam) : renderDayCard(d, s.period, s.classId);
+        var isFoc = !!(focus && focus.period===s.period && focus.classId===s.classId);
+        if(blockingExam){
+          var entry = { s:s, blockingExam:blockingExam, isFoc:isFoc };
+          if(isFoc) focusEntry = entry; else activeEntries.push(entry);
+          return;
+        }
+        var rec = getRecords(d).find(function(r){ return r.period===s.period; });
+        var isDone = !!(rec && (rec.excused || rec.saved || rec.itemId || (rec.extraItems && rec.extraItems.length)));
+        var key = d+'-'+s.period;
+        // 저장된(완료 처리된) 수업은 지금 이 시간이어도 접어서 내려보낸다.
+        // '지금 이 시간' 핀은 아직 저장 안 한, 채워야 할 카드를 상단에 띄워주기 위한 용도이기 때문.
+        if(isDone && !state.uiExpanded[key]){
+          completedPeriods.push(s);
+        } else if(isFoc){
+          focusEntry = { s:s, isFoc:true };
+        } else {
+          activeEntries.push({ s:s, isFoc:false });
+        }
       });
+      var orderedActive = focusEntry ? [focusEntry].concat(activeEntries) : activeEntries;
+      orderedActive.forEach(function(e){
+        html += e.blockingExam ? renderExamBlockedCard(e.s.period, e.s.classId, e.blockingExam) : renderDayCard(d, e.s.period, e.s.classId, e.isFoc);
+      });
+      if(completedPeriods.length){
+        html += '<div class="completed-zone-label">저장된 수업</div>';
+        completedPeriods.forEach(function(s){
+          html += renderFoldedCard(d, s.period, s.classId);
+        });
+      }
     }
     html += renderExtrasSection(d);
   }
@@ -1515,6 +1645,14 @@ function renderToday(){
   var jt = document.getElementById('jumpTodayTop');
   if(jt) jt.onclick = function(){ state.currentDate = todayStr(); goToDate(state.currentDate); };
   bindExtrasEvents(el, d, function(){ renderToday(); });
+
+  el.querySelectorAll('.card-folded').forEach(function(fc){
+    fc.addEventListener('click', function(){
+      var period = parseInt(fc.getAttribute('data-period'),10);
+      state.uiExpanded[d+'-'+period] = true;
+      renderToday();
+    });
+  });
 
   bindDayCardEvents(el, d);
 }
@@ -1596,7 +1734,34 @@ function renderExamBlockedCard(period, classId, exam){
     '<div class="excused-note">'+escapeHtml(exam.name)+' 기간이라 진도 기록이 없어요.</div></div>';
 }
 
-function renderDayCard(dateStr, period, classId){
+// 추가 진도 목록(리스트 + 새로 추가할 수 있는 드롭다운) HTML을 만든다.
+// 카드 최초 렌더링과, 저장 전 임시(draft) 상태를 화면에 반영할 때 둘 다 이 함수를 재사용한다.
+function buildExtraSectionHtml(classId, mainItemId, extraItems){
+  var items = state.plans[classId] || [];
+  var listHtml = extraItems.map(function(ex){
+    var idx = items.findIndex(function(x){ return x.id===ex.itemId; });
+    var it = idx!==-1 ? items[idx] : null;
+    var title = it ? ((idx+1)+'. '+escapeHtml(it.title)) : '(삭제된 항목)';
+    var miniBtns = STATUS_ORDER.map(function(s){
+      return '<span class="mini-status-btn'+(ex.status===s?' on':'')+'" data-itemid="'+ex.itemId+'" data-status="'+s+'" title="'+STATUS_META[s].short+'">'+statusIconSvg(s,14)+'</span>';
+    }).join('');
+    return '<div class="extra-item-row" data-itemid="'+ex.itemId+'"><span class="grow">'+title+'</span>'+
+      '<span class="mini-status-group">'+miniBtns+'</span>'+
+      '<span class="remove-extra" data-itemid="'+ex.itemId+'">✕</span></div>';
+  }).join('');
+  var usedIds = {};
+  if(mainItemId) usedIds[mainItemId] = true;
+  extraItems.forEach(function(e){ usedIds[e.itemId] = true; });
+  var addableItems = items.filter(function(it){ return !usedIds[it.id]; });
+  var addHtml = addableItems.length ?
+    ('<div class="extra-add-row"><select class="extra-item-select">'+
+      addableItems.map(function(it){ var i=items.indexOf(it); return '<option value="'+it.id+'">'+(i+1)+'. '+escapeHtml(it.title)+'</option>'; }).join('')+
+      '</select><button type="button" class="btn ghost small add-extra-btn">추가</button></div>')
+    : (items.length ? '<p class="small-note" style="margin:4px 0 0;">추가할 수 있는 진도 항목이 없어요.</p>' : '');
+  return { listHtml: listHtml, addHtml: addHtml };
+}
+
+function renderDayCard(dateStr, period, classId, isFocus){
   var cls = getClass(classId);
   if(!cls) return '';
   var rec = getRecords(dateStr).find(function(r){ return r.period===period; }) || {};
@@ -1621,18 +1786,26 @@ function renderDayCard(dateStr, period, classId){
     opts += '<option value="'+it.id+'"'+(mainItemId===it.id?' selected':'')+'>'+label+'</option>';
   });
 
-  var stamp = (status==='done') ? '<span class="stamp">완료</span>' : '';
+  // 이 카드가 이미 저장된 적이 있으면(=명시적으로 [진도 저장]을 눌렀으면) 상단에 저장됨 표시를 보여준다.
+  // 예전 버전에서 자동저장으로 만들어진 기록(rec.saved가 없는 경우)도 저장된 것으로 취급한다.
+  var isSaved = !!(rec.saved || mainItemId || extraItems.length);
+  var stamp = isSaved ? '<span class="stamp" data-fold="'+period+'" title="눌러서 접기">'+STATUS_META[status].short+' · 저장됨</span>' : '';
   var memo = rec.memo || '';
   var presenter = rec.presenter || '';
 
+  // '지난 진도' 조회 영역: 교사가 수업 직전 가장 먼저 확인하는 정보라 카드 맨 위에
+  // 크고 굵은 하이라이트 블록(Hero)으로 따로 분리해서 보여준다.
   var cst = classStats(classId);
-  var prevHtml = '';
+  var prevHtml;
   if(cst.last && cst.last.doneDate && cst.last.doneDate < dateStr){
     var lm = STATUS_META[cst.last.status||'done'];
-    prevHtml = '<div class="prev-progress">지난 진도: <b>'+escapeHtml(cst.last.title)+'</b>'+
-      (cst.last.donePage?(' · '+escapeHtml(cst.last.donePage)):'')+' · <span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle;">'+statusIconSvg(cst.last.status||'done',13)+(lm?lm.short:'')+'</span> · '+niceDate(cst.last.doneDate)+'</div>';
-  } else if(!cst.last){
-    prevHtml = '<div class="prev-progress">아직 기록된 진도가 없어요.</div>';
+    prevHtml = '<div class="prev-hero"><div class="prev-hero-label">지난 진도</div>'+
+      '<div class="prev-hero-value">'+escapeHtml(cst.last.title)+(cst.last.donePage?('<br>'+escapeHtml(cst.last.donePage)):'')+'</div>'+
+      '<div class="prev-hero-meta">'+statusIconSvg(cst.last.status||'done',13)+'<span>'+(lm?lm.short:'')+' · '+niceDate(cst.last.doneDate)+'</span></div>'+
+    '</div>';
+  } else {
+    prevHtml = '<div class="prev-hero empty"><div class="prev-hero-label">지난 진도</div>'+
+      '<div class="prev-hero-value">아직 기록된 진도가 없어요</div></div>';
   }
 
   var statusBtns = STATUS_ORDER.map(function(s){
@@ -1644,33 +1817,16 @@ function renderDayCard(dateStr, period, classId){
 
   // 오늘 원래 나갈 항목(메인) 말고 추가로 더 나간 진도가 있으면 따로 기록한다.
   // 메인 항목과 상태가 섞이지 않도록, 추가 항목은 각자 자기 상태를 따로 갖는다.
-  var extraListHtml = extraItems.map(function(ex){
-    var idx = items.findIndex(function(x){ return x.id===ex.itemId; });
-    var it = idx!==-1 ? items[idx] : null;
-    var title = it ? ((idx+1)+'. '+escapeHtml(it.title)) : '(삭제된 항목)';
-    var miniBtns = STATUS_ORDER.map(function(s){
-      return '<span class="mini-status-btn'+(ex.status===s?' on':'')+'" data-itemid="'+ex.itemId+'" data-status="'+s+'" title="'+STATUS_META[s].short+'">'+statusIconSvg(s,14)+'</span>';
-    }).join('');
-    return '<div class="extra-item-row" data-itemid="'+ex.itemId+'"><span class="grow">'+title+'</span>'+
-      '<span class="mini-status-group">'+miniBtns+'</span>'+
-      '<span class="remove-extra" data-itemid="'+ex.itemId+'">✕</span></div>';
-  }).join('');
-
-  var usedIds = {};
-  if(mainItemId) usedIds[mainItemId] = true;
-  extraItems.forEach(function(e){ usedIds[e.itemId] = true; });
-  var addableItems = items.filter(function(it){ return !usedIds[it.id]; });
-  var extraAddHtml = addableItems.length ?
-    ('<div class="extra-add-row"><select class="extra-item-select">'+
-      addableItems.map(function(it){ var i=items.indexOf(it); return '<option value="'+it.id+'">'+(i+1)+'. '+escapeHtml(it.title)+'</option>'; }).join('')+
-      '</select><button type="button" class="btn ghost small add-extra-btn">추가</button></div>')
-    : (items.length ? '<p class="small-note" style="margin:4px 0 0;">추가할 수 있는 진도 항목이 없어요.</p>' : '');
+  var extraParts = buildExtraSectionHtml(classId, mainItemId, extraItems);
   var hasExtra = extraItems.length>0;
+  var focusBadge = isFocus ? '<div class="now-focus-badge">'+statusIconSvg('inProgress',12)+' 지금 이 시간</div>' : '';
 
-  return '<div class="card" data-period="'+period+'" data-class="'+classId+'">'+
+  return '<div class="card'+(isFocus?' is-focus':'')+'" data-period="'+period+'" data-class="'+classId+'">'+
     '<div class="card-head"><span class="period-tag">'+periodTagLabel(period)+'</span>'+
     '<span class="class-chip" style="background:'+cls.color+'">'+escapeHtml(cls.name)+'</span>'+stamp+'</div>'+
+    focusBadge+
     prevHtml+
+    '<div class="card-section-divider">오늘 진도 입력</div>'+
     '<div class="field-row"><label>진도 항목</label><select class="f-item">'+opts+'</select></div>'+
     '<div class="field-row"><label>오늘 어디까지 (쪽/문단/번호)</label><div class="page-row">'+
       '<input type="text" class="f-page" placeholder="예: 45쪽까지" value="'+escapeHtml(rec.pageText||'')+'">'+
@@ -1679,14 +1835,14 @@ function renderDayCard(dateStr, period, classId){
     '<div class="memo-toggle extra-toggle">추가 진도 기록 '+(hasExtra?'수정':'추가')+'</div>'+
     '<div class="memo-wrap extra-wrap'+(hasExtra?' show':'')+'">'+
       '<p class="small-note" style="margin:2px 0 8px;">오늘 원래 나갈 진도 말고 추가로 더 나간 항목이 있으면 여기서 따로 기록하세요. 메인 항목 상태와는 별개로 관리돼요.</p>'+
-      '<div class="extra-list">'+extraListHtml+'</div>'+
-      extraAddHtml+
+      '<div class="extra-section"><div class="extra-list">'+extraParts.listHtml+'</div>'+extraParts.addHtml+'</div>'+
     '</div>'+
     '<div class="memo-toggle">발표/메모 '+((memo||presenter)?'수정':'추가')+'</div>'+
     '<div class="memo-wrap'+((memo||presenter)?' show':'')+'">'+
       '<div class="field-row"><label>오늘 발표자 (있으면)</label><input type="text" class="f-presenter" placeholder="예: 김OO, 박OO" value="'+escapeHtml(presenter)+'"></div>'+
       '<div class="field-row"><label>메모 (발표 내용, 특이사항 등)</label><textarea class="f-memo" rows="2" placeholder="예: 김OO 이차방정식 풀이 발표">'+escapeHtml(memo)+'</textarea></div>'+
     '</div>'+
+    '<button type="button" class="btn save-progress-btn" style="width:100%;margin-top:14px;">진도 저장</button>'+
     '<div class="excuse-toggle-row"><span class="excuse-label">개인 사정으로 수업 없음:</span>'+
       EXCUSE_REASONS.map(function(r){ return '<span class="excuse-btn" data-reason="'+r+'">'+r+'</span>'; }).join('')+
     '</div>'+
@@ -1695,21 +1851,47 @@ function renderDayCard(dateStr, period, classId){
 
 function bindDayCardEvents(container, dateStr){
   container.querySelectorAll('.card[data-period]').forEach(function(card){
-    bindOneCard(card, dateStr);
+    bindOneCard(card, dateStr, card.classList.contains('is-focus'));
   });
 }
 
-function bindOneCard(card, dateStr){
+// 카드 하나의 상태가 바뀐 뒤(특히 완료 처리), 잠깐 뒤에 오늘 화면 전체를 다시 그려서
+// 완료된 카드는 접어서 아래로, 남은 카드는 위로 정렬한다. (여러 번 눌러도 마지막 한 번만 실행)
+var reorderTimer = null;
+function scheduleReorder(){
+  clearTimeout(reorderTimer);
+  reorderTimer = setTimeout(function(){ renderToday(); }, 500);
+}
+
+// 실수로 잘못 눌러서 저장되는 걸 막기 위한 확인 모달. 확인하면 onConfirm 실행.
+function openSaveConfirmModal(onConfirm){
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = '<div class="modal-box">'+
+    '<h3>진도를 저장하시겠습니까?</h3>'+
+    '<p class="small-note" style="margin:0;">저장하면 이 카드는 완료된 항목으로 정리돼요.</p>'+
+    '<div class="modal-actions"><button class="btn ghost small" id="saveConfirmCancel">취소</button><button class="btn small" id="saveConfirmOk">저장</button></div>'+
+  '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#saveConfirmCancel').addEventListener('click', function(){ overlay.remove(); });
+  overlay.querySelector('#saveConfirmOk').addEventListener('click', function(){
+    overlay.remove();
+    onConfirm();
+  });
+}
+
+function bindOneCard(card, dateStr, isFocus){
   var period = parseInt(card.getAttribute('data-period'),10);
   var classId = card.getAttribute('data-class');
 
   function rerenderCard(){
-    var newHtml = renderDayCard(dateStr, period, classId);
+    var newHtml = renderDayCard(dateStr, period, classId, isFocus);
     var tmp = document.createElement('div');
     tmp.innerHTML = newHtml;
     var newCard = tmp.firstElementChild;
     card.replaceWith(newCard);
-    bindOneCard(newCard, dateStr);
+    bindOneCard(newCard, dateStr, isFocus);
   }
 
   if(card.querySelector('.excused-undo')){
@@ -1721,114 +1903,128 @@ function bindOneCard(card, dateStr){
     return;
   }
 
-  var curStatus = (getRecords(dateStr).find(function(r){ return r.period===period; }) || {}).status || 'pending';
-  var curExtraItems = recExtraItems(getRecords(dateStr).find(function(r){ return r.period===period; }) || {}).map(function(e){ return { itemId:e.itemId, status:e.status }; });
+  // 화면에서 만지작거리는 동안은 저장하지 않고, [진도 저장] 버튼을 눌러 확인한 뒤에만 실제로 저장한다.
+  // (실수로 상태 버튼을 잘못 누르거나 입력하다가 바로 저장돼버리는 걸 막기 위함)
+  var savedRec = getRecords(dateStr).find(function(r){ return r.period===period; }) || {};
+  var draft = {
+    itemId: recMainItemId(savedRec),
+    extraItems: recExtraItems(savedRec).map(function(e){ return { itemId:e.itemId, status:e.status }; })
+  };
 
-  function currentEntry(){
-    return {
-      period: period,
-      classId: classId,
-      itemId: card.querySelector('.f-item').value || '',
-      extraItems: curExtraItems,
-      pageText: card.querySelector('.f-page').value,
-      status: curStatus,
-      presenter: card.querySelector('.f-presenter').value,
-      memo: card.querySelector('.f-memo').value
+  function bindFoldTrigger(){
+    var st = card.querySelector('.stamp[data-fold]');
+    if(st) st.onclick = function(e){
+      e.stopPropagation();
+      delete state.uiExpanded[dateStr+'-'+period];
+      renderToday();
     };
   }
-  function refreshCardAfterSave(entry){
-    var oldStamp = card.querySelector('.stamp');
-    if(oldStamp) oldStamp.remove();
-    if(entry.status==='done') card.querySelector('.card-head').insertAdjacentHTML('beforeend', '<span class="stamp">완료</span>');
+  bindFoldTrigger();
+
+  function refreshExtraSection(){
+    var parts = buildExtraSectionHtml(classId, draft.itemId, draft.extraItems);
+    var section = card.querySelector('.extra-section');
+    section.innerHTML = '<div class="extra-list">'+parts.listHtml+'</div>'+parts.addHtml;
+    var toggle = card.querySelector('.extra-toggle');
+    toggle.textContent = '추가 진도 기록 '+(draft.extraItems.length?'수정':'추가');
+    bindExtraControls();
   }
-  function persist(){
-    var entry = currentEntry();
-    var items = state.plans[classId] || [];
-    if(entry.itemId){
-      var it = items.find(function(i){ return i.id===entry.itemId; });
-      if(it){
-        it.status = entry.status;
-        it.done = (entry.status==='done');
-        if(entry.status!=='pending'){
-          it.doneDate = dateStr;
-          if(entry.pageText) it.donePage = entry.pageText;
-        }
-      }
+  function bindExtraControls(){
+    var addExtraBtn = card.querySelector('.add-extra-btn');
+    if(addExtraBtn){
+      addExtraBtn.onclick = function(){
+        var sel = card.querySelector('.extra-item-select');
+        if(!sel || !sel.value) return;
+        draft.extraItems.push({ itemId: sel.value, status: 'done' });
+        refreshExtraSection();
+      };
     }
-    entry.extraItems.forEach(function(ex){
-      var it = items.find(function(i){ return i.id===ex.itemId; });
-      if(it){
-        it.status = ex.status;
-        it.done = (ex.status==='done');
-        if(ex.status!=='pending') it.doneDate = dateStr;
-      }
+    card.querySelectorAll('.remove-extra').forEach(function(btn){
+      btn.onclick = function(){
+        var id = btn.getAttribute('data-itemid');
+        draft.extraItems = draft.extraItems.filter(function(e){ return e.itemId!==id; });
+        refreshExtraSection();
+      };
     });
-    Promise.all([ setRecord(dateStr, period, entry), savePlans() ]).then(function(){
-      refreshCardAfterSave(entry);
+    card.querySelectorAll('.mini-status-btn').forEach(function(btn){
+      btn.onclick = function(){
+        var id = btn.getAttribute('data-itemid');
+        var s = btn.getAttribute('data-status');
+        draft.extraItems.forEach(function(e){ if(e.itemId===id) e.status = s; });
+        refreshExtraSection();
+      };
     });
   }
-  var debTimer=null;
-  function debPersist(){ clearTimeout(debTimer); debTimer=setTimeout(persist, 400); }
+  bindExtraControls();
 
   card.querySelector('.f-item').addEventListener('change', function(){
-    var it = (state.plans[classId]||[]).find(function(x){ return x.id===this.value; }.bind(this));
+    draft.itemId = this.value;
+    var it = (state.plans[classId]||[]).find(function(x){ return x.id===draft.itemId; });
     if(it && it.targetPage && !card.querySelector('.f-page').value){
       card.querySelector('.f-page').value = it.targetPage;
     }
-    persist();
-    rerenderCard(); // 메인 항목이 바뀌면 추가 진도 목록에서 고를 수 있는 항목도 달라지므로 다시 그린다
+    refreshExtraSection(); // 메인 항목이 바뀌면 추가로 고를 수 있는 항목 목록도 달라지므로 새로 그린다
   });
-  card.querySelector('.f-page').addEventListener('input', debPersist);
-  card.querySelector('.f-memo').addEventListener('input', debPersist);
-  card.querySelector('.f-presenter').addEventListener('input', debPersist);
   card.querySelectorAll('.status-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
-      curStatus = btn.getAttribute('data-status');
       card.querySelectorAll('.status-btn').forEach(function(b){ b.classList.toggle('on', b===btn); });
-      persist();
     });
   });
-
-  var addExtraBtn = card.querySelector('.add-extra-btn');
-  if(addExtraBtn){
-    addExtraBtn.addEventListener('click', function(){
-      var sel = card.querySelector('.extra-item-select');
-      if(!sel || !sel.value) return;
-      curExtraItems.push({ itemId: sel.value, status: 'done' });
-      persist();
-      rerenderCard();
-    });
-  }
-  card.querySelectorAll('.remove-extra').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var id = btn.getAttribute('data-itemid');
-      curExtraItems = curExtraItems.filter(function(e){ return e.itemId!==id; });
-      persist();
-      rerenderCard();
-    });
-  });
-  card.querySelectorAll('.mini-status-btn').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var id = btn.getAttribute('data-itemid');
-      var s = btn.getAttribute('data-status');
-      curExtraItems.forEach(function(e){ if(e.itemId===id) e.status = s; });
-      persist();
-      rerenderCard();
-    });
-  });
-
   card.querySelectorAll('.memo-toggle').forEach(function(toggle){
     toggle.addEventListener('click', function(){
       var wrap = toggle.nextElementSibling;
       if(wrap && wrap.classList.contains('memo-wrap')) wrap.classList.toggle('show');
     });
   });
+
+  card.querySelector('.save-progress-btn').addEventListener('click', function(){
+    openSaveConfirmModal(function(){
+      var selectedStatusBtn = card.querySelector('.status-btn.on');
+      var entry = {
+        period: period,
+        classId: classId,
+        itemId: card.querySelector('.f-item').value || '',
+        extraItems: draft.extraItems,
+        pageText: card.querySelector('.f-page').value,
+        status: selectedStatusBtn ? selectedStatusBtn.getAttribute('data-status') : 'pending',
+        presenter: card.querySelector('.f-presenter').value,
+        memo: card.querySelector('.f-memo').value,
+        saved: true
+      };
+      var items = state.plans[classId] || [];
+      if(entry.itemId){
+        var it = items.find(function(i){ return i.id===entry.itemId; });
+        if(it){
+          it.status = entry.status;
+          it.done = (entry.status==='done');
+          if(entry.status!=='pending'){
+            it.doneDate = dateStr;
+            if(entry.pageText) it.donePage = entry.pageText;
+          }
+        }
+      }
+      entry.extraItems.forEach(function(ex){
+        var it = items.find(function(i){ return i.id===ex.itemId; });
+        if(it){
+          it.status = ex.status;
+          it.done = (ex.status==='done');
+          if(ex.status!=='pending') it.doneDate = dateStr;
+        }
+      });
+      Promise.all([ setRecord(dateStr, period, entry), savePlans() ]).then(function(){
+        flashSaved();
+        rerenderCard();
+        scheduleReorder(); // 저장 직후 잠깐 뒤 완료 구역으로 접혀 이동 (포커스 카드면 그대로 상단에 남음)
+      });
+    });
+  });
+
   card.querySelectorAll('.excuse-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
       var reason = btn.getAttribute('data-reason');
       if(!confirm(reason+'로 이 시간을 표시할까요? 입력한 진도 기록은 지워져요.')) return;
       var rec = { period:period, classId:classId, excused:true, reason:reason };
-      setRecord(dateStr, period, rec).then(rerenderCard);
+      setRecord(dateStr, period, rec).then(function(){ scheduleReorder(); rerenderCard(); });
     });
   });
 }
@@ -3106,6 +3302,21 @@ document.querySelectorAll('.nav-btn').forEach(function(b){
 });
 
 // ---------- init ----------
+function hideSplash(){
+  // Capacitor 네이티브 스플래시가 따로 떠있다면 먼저 내려주고, 우리가 만든 체크 애니메이션 스플래시를 보여준 뒤 사라지게 한다.
+  try{
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SplashScreen){
+      window.Capacitor.Plugins.SplashScreen.hide();
+    }
+  }catch(e){}
+  setTimeout(function(){
+    var sp = document.getElementById('customSplash');
+    if(!sp) return;
+    sp.classList.add('fade-out');
+    setTimeout(function(){ sp.remove(); }, 500);
+  }, 1500);
+}
+
 function init(){
   Promise.all([
     loadJSON('settings', null),
@@ -3154,12 +3365,14 @@ function init(){
     return ensureMonth(ymOf(state.currentDate));
   }).then(function(){
     renderAll();
+    hideSplash();
   }).catch(function(e){
     console.error(e);
     state.settings = defaultSettings();
     state.plans = {};
     applyFontScale();
     renderAll();
+    hideSplash();
   });
 }
 init();
