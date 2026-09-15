@@ -14,13 +14,13 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 <style>
   :root{
-    --bg:#F9F8F6;
-    --bg-soft:#F1EFE9;
+    --bg:#FAF8F6;
+    --bg-soft:#EFEAE3;
     --card:#FFFFFF;
     --ink:#22252A;
     --ink-soft:#75726C;
     --ink-faint:#C9C6BF;
-    --line:#E6E3DC;
+    --line:#E3DED5;
     --sage:#7E9A74;
     --sage-deep:#48603F;
     --sage-bg:#E6EDE2;
@@ -256,7 +256,7 @@
     color:var(--ink-soft);cursor:pointer;
   }
   .status-btn .status-ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .status-btn.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .status-btn.on{background:var(--coral-bg);border-color:var(--coral);color:var(--coral-deep);}
 
   .prev-progress{
     font-size:0.75rem;color:var(--ink-soft);background:var(--bg-soft);
@@ -328,7 +328,7 @@
 
   .memo-toggle{
     font-size:0.75rem;color:var(--ink-soft);text-decoration:underline;
-    cursor:pointer;display:inline-block;margin-top:9px;
+    cursor:pointer;display:block;margin-top:12px;padding:2px 0;
   }
   .memo-wrap{margin-top:8px;display:none;}
   .memo-wrap.show{display:block;}
@@ -352,9 +352,8 @@
   .extra-add-row select{flex:1;}
 
   .excuse-toggle-row{
-    display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:12px;
+    display:flex; align-items:center; flex-wrap:wrap; gap:6px;
   }
-  .excuse-label{font-size:0.7188rem;color:var(--ink-faint);}
   .excuse-btn{
     font-size:0.7188rem;color:var(--ink-soft);cursor:pointer;
     padding:4px 9px;border-radius:20px;background:var(--bg-soft);border:1px solid var(--line);
@@ -1893,9 +1892,10 @@ function renderDayCard(dateStr, period, classId, isFocus){
       '<div class="field-row"><label>메모 (발표 내용, 특이사항 등)</label><textarea class="f-memo" rows="2" placeholder="예: 김OO 이차방정식 풀이 발표">'+escapeHtml(memo)+'</textarea></div>'+
     '</div>'+
     '<button type="button" class="btn save-progress-btn" style="width:100%;margin-top:14px;">진도 저장</button>'+
-    '<div class="excuse-toggle-row"><span class="excuse-label">개인 사정으로 수업 없음:</span>'+
+    '<div class="memo-toggle">오늘 수업 없었나요?</div>'+
+    '<div class="memo-wrap"><div class="excuse-toggle-row">'+
       EXCUSE_REASONS.map(function(r){ return '<span class="excuse-btn" data-reason="'+r+'">'+r+'</span>'; }).join('')+
-    '</div>'+
+    '</div></div>'+
   '</div>';
 }
 
@@ -2369,7 +2369,7 @@ function renderExam(){
             }
             html += '<div class="pace-row"><span class="cname" style="color:'+darken(c.color,0.45)+'">'+escapeHtml(c.name)+
               (st.rangeLabel?' <span style="font-size:0.6875rem;color:var(--ink-faint);font-weight:400;">('+st.rangeLabel+')</span>':'')+'</span>'+
-              '<span><span class="pace-num-sub">남은 </span><span class="pace-num">'+Math.max(remain,0)+'개</span><span class="pace-num-sub"> · 수업 '+sessions+'회</span></span>'+
+              '<span><span class="pace-num-sub">남은 </span><span class="pace-num">'+Math.max(remain,0)+'개</span><span class="pace-num-sub"> · </span><span class="pace-num">수업 '+sessions+'회</span></span>'+
               '<span class="pace-tag '+tagClass+'">'+tag+'</span></div>';
           });
         }
