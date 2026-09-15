@@ -14,13 +14,13 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 <style>
   :root{
-    --bg:#FAF8F6;
-    --bg-soft:#EFEAE3;
+    --bg:#FAFAF9;
+    --bg-soft:#EFEFED;
     --card:#FFFFFF;
     --ink:#22252A;
     --ink-soft:#75726C;
     --ink-faint:#C9C6BF;
-    --line:#E3DED5;
+    --line:#E3E3E1;
     --sage:#7E9A74;
     --sage-deep:#48603F;
     --sage-bg:#E6EDE2;
@@ -37,6 +37,9 @@
     --rose-deep:#733B36;
     --stamp:#7E9A74;
     --holiday-bg:#FCE8E6;
+    --gray-100:#EBEBEB;
+    --gray-400:#808080;
+    --gray-700:#464646;
     --shadow: 0 2px 14px rgba(34,37,42,0.07);
     --shadow-soft: 0 1px 3px rgba(34,37,42,0.05);
     --radius: 16px;
@@ -469,13 +472,13 @@
   .cal-cell.empty{background:transparent;border:none;cursor:default;}
   .cal-cell.today{border-color:var(--coral);border-width:2px;}
   .cal-cell.holiday{background:var(--holiday-bg);}
-  .cal-cell.selected{background:var(--sage-bg);border-color:var(--sage);}
+  .cal-cell.selected{background:var(--coral-bg);border-color:var(--coral);}
   .cal-cell .num{font-size:0.8125rem;font-weight:600;color:var(--ink);}
   .cal-cell.holiday .num{color:var(--coral-deep);}
   .cal-cell .dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;margin-top:3px;}
   .cal-cell .dot{width:6px;height:6px;border-radius:50%;}
   .cal-cell .exam-flag{position:absolute;top:3px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--coral-deep);}
-  .cal-cell .stamp-mini{position:absolute;bottom:2px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--sage-deep);}
+  .cal-cell .stamp-mini{position:absolute;bottom:2px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--coral-deep);}
   .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
   .legend .item{display:flex;align-items:center;gap:5px;font-size:0.75rem;color:var(--ink-soft);}
   .legend .sw{width:9px;height:9px;border-radius:50%;}
@@ -502,7 +505,7 @@
     font-size:0.6875rem;font-weight:600;padding:3px 9px;border-radius:6px;
   }
   .badge.slow{background:var(--coral-bg);color:var(--coral-deep);}
-  .badge.fast{background:var(--sage-bg);color:var(--sage-deep);}
+  .badge.fast{background:var(--gray-100);color:var(--gray-700);}
   .progress-bar-bg{
     height:8px;background:var(--bg-soft);border-radius:20px;overflow:hidden;margin:8px 0;
   }
@@ -532,9 +535,9 @@
   .pace-row .pace-num{font-weight:800;font-size:0.9375rem;color:var(--ink);}
   .pace-row .pace-num-sub{color:var(--ink-faint);font-weight:500;font-size:0.75rem;}
   .pace-tag{font-size:0.7188rem;font-weight:600;padding:2px 8px;border-radius:10px;}
-  .pace-tag.ok{background:var(--sage-bg);color:var(--sage-deep);}
-  .pace-tag.tight{background:var(--butter-bg);color:var(--butter-deep);}
-  .pace-tag.danger{background:var(--coral-bg);color:var(--coral-deep);}
+  .pace-tag.ok{background:var(--gray-100);color:var(--gray-700);}
+  .pace-tag.tight{background:var(--gray-400);color:#fff;}
+  .pace-tag.danger{background:var(--coral-deep);color:#fff;}
 
   /* 설정 */
   .settings-section{
@@ -555,7 +558,7 @@
   table.sched-table th, table.sched-table td{padding:4px 3px;text-align:center;}
   table.sched-table th{color:var(--ink-soft);font-weight:600;}
   table.sched-table .lunch-row td{
-    background:var(--butter-bg); color:var(--butter-deep); font-weight:600;
+    background:var(--gray-100); color:var(--gray-700); font-weight:600;
     font-size:0.6875rem; padding:5px 3px; border-radius:6px;
   }
   table.sched-table select{padding:5px 16px 5px 2px;font-size:0.7188rem;border-radius:7px;background-position:right 2px center;background-size:11px;}
@@ -636,7 +639,7 @@
     font-weight:700; border:1px solid; word-break:keep-all;
   }
   .pt-cell.pt-lunch{
-    background:var(--butter-bg); color:var(--butter-deep); font-weight:600;
+    background:var(--gray-100); color:var(--gray-700); font-weight:600;
     min-height:24px; font-size:0.6875rem; margin:1px 0;
   }
 
@@ -1715,7 +1718,7 @@ function renderExtraCard(dateStr, extra){
   var clsNames = (extra.classIds||[]).map(function(id){ var c=getClass(id); return c?c.name:''; }).filter(Boolean).join(', ');
   return '<div class="card extra-card">'+
     '<div class="card-head"><span class="period-tag">추가 수업</span>'+
-    '<span class="class-chip" style="background:var(--butter-bg)">'+escapeHtml(extra.subject)+'</span></div>'+
+    '<span class="class-chip" style="background:var(--gray-100)">'+escapeHtml(extra.subject)+'</span></div>'+
     (clsNames?('<div class="small-note" style="margin:0 0 4px;">통합 학급: '+escapeHtml(clsNames)+'</div>'):'')+
     (extra.place?('<div class="small-note" style="margin:0 0 4px;">장소: '+escapeHtml(extra.place)+'</div>'):'')+
     (extra.note?('<div class="small-note" style="margin:0 0 8px;">'+escapeHtml(extra.note)+'</div>'):'')+
@@ -2145,7 +2148,7 @@ function renderCalendar(){
         html += '<div class="item"><span class="sw" style="background:'+c.color+'"></span>'+escapeHtml(c.name)+'</div>';
       });
       html += '<div class="item"><span class="sw" style="background:var(--coral-deep)"></span>시험일</div>';
-      html += '<div class="item"><span class="sw" style="background:var(--sage-deep)"></span>진도 완료</div>';
+      html += '<div class="item"><span class="sw" style="background:var(--coral-deep)"></span>진도 완료</div>';
       html += '<div class="item"><span class="sw" style="background:var(--holiday-bg);border:1px solid var(--coral)"></span>휴업일</div>';
       html += '</div>';
     }
@@ -2369,7 +2372,7 @@ function renderExam(){
             }
             html += '<div class="pace-row"><span class="cname" style="color:'+darken(c.color,0.45)+'">'+escapeHtml(c.name)+
               (st.rangeLabel?' <span style="font-size:0.6875rem;color:var(--ink-faint);font-weight:400;">('+st.rangeLabel+')</span>':'')+'</span>'+
-              '<span><span class="pace-num-sub">남은 </span><span class="pace-num">'+Math.max(remain,0)+'개</span><span class="pace-num-sub"> · </span><span class="pace-num">수업 '+sessions+'회</span></span>'+
+              '<span><span class="pace-num-sub">남은 </span><span class="pace-num">'+Math.max(remain,0)+'개</span><span class="pace-num-sub"> · 수업 </span><span class="pace-num">'+sessions+'회</span></span>'+
               '<span class="pace-tag '+tagClass+'">'+tag+'</span></div>';
           });
         }
@@ -3203,7 +3206,7 @@ function renderHolidayMergedList(body){
       var h = findAutoHoliday(d);
       var nm = h ? h.name : '대학수학능력시험일';
       html += '<div class="list-row" style="opacity:.6;"><div class="grow">'+niceDate(d)+' · '+escapeHtml(nm)+'</div>'+
-        '<span class="restore-h" data-date="'+d+'" style="font-size:0.75rem;text-decoration:underline;cursor:pointer;color:var(--sage-deep);">복원</span></div>';
+        '<span class="restore-h" data-date="'+d+'" style="font-size:0.75rem;text-decoration:underline;cursor:pointer;color:var(--coral-deep);">복원</span></div>';
     });
   }
   if(!merged.length) html += '<p class="small-note">등록된 휴업일이 없어요.</p>';
