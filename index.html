@@ -88,40 +88,27 @@
     padding-top:env(safe-area-inset-top);
     background:var(--bg);
   }
-  .topbar{
-    padding:20px 20px 12px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    background:var(--bg);
-  }
-  .topbar .logo{
-    font-family:'Pretendard', sans-serif;
-    font-weight:700;
-    font-size:1.125rem;
-    letter-spacing:-0.3px;
-    color:var(--ink);
-    display:flex;
-    align-items:center;
-    gap:8px;
-  }
-  .topbar .logo .dot{
-    width:8px;height:8px;border-radius:2px;background:var(--coral);display:inline-block;
-  }
   .save-badge{
+    position:fixed;
+    top:calc(env(safe-area-inset-top) + 14px);
+    right:16px;
     font-size:0.75rem;
     color:var(--coral-deep);
     background:var(--coral-bg);
-    padding:4px 10px;
-    border-radius:6px;
+    padding:6px 12px;
+    border-radius:20px;
+    box-shadow:var(--shadow-soft);
     opacity:0;
-    transition:opacity .25s ease;
+    transform:translateY(-6px);
+    pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
     white-space:nowrap;
+    z-index:500;
   }
-  .save-badge.show{opacity:1;}
+  .save-badge.show{opacity:1;transform:translateY(0);}
   main{
     flex:1;
-    padding:0 16px 96px;
+    padding:18px 16px 96px;
     overflow-x:hidden;
   }
   .empty-state{
@@ -172,7 +159,7 @@
   .week-header-top{
     display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;
   }
-  .week-title{font-size:1.125rem;font-weight:800;color:var(--ink);}
+  .week-title{font-size:1.3125rem;font-weight:800;color:var(--ink);}
   .week-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
   .week-cell{
     display:flex;flex-direction:column;align-items:center;gap:3px;
@@ -768,10 +755,7 @@
   <div class="splash-title">진도수첩</div>
 </div>
 <div id="app">
-  <div class="topbar">
-    <div class="logo"><span class="dot"></span>진도수첩</div>
-    <div class="save-badge" id="saveBadge">저장됐어요 ✓</div>
-  </div>
+  <div class="save-badge" id="saveBadge">저장됐어요 ✓</div>
 
   <main>
     <section class="view active in" id="view-today"></section>
@@ -3813,7 +3797,7 @@ function renderSettingsNeis(body){
       '<div class="list-row"><div class="grow">'+escapeHtml(state.settings.neisSchoolName)+'</div>'+
       '<span id="neisSchoolChangeBtn" style="font-size:0.75rem;color:var(--coral-deep);text-decoration:underline;cursor:pointer;">변경</span></div></div>';
   } else {
-    html += '<div class="field-row"><label>학교 이름</label><div class="add-row"><input type="text" id="neisSchoolSearch" placeholder="예: 효성고등학교" style="flex:1;"><button class="btn ghost small" id="neisSearchBtn">검색</button></div></div>'+
+    html += '<div class="field-row"><label>학교 이름</label><div class="add-row"><input type="text" id="neisSchoolSearch" placeholder="예: ㅇㅇ고등학교" style="flex:1;"><button class="btn ghost small" id="neisSearchBtn">검색</button></div></div>'+
       '<div id="neisSearchResults"></div>';
   }
   html += '<button class="btn ghost small" id="neisFetchBtn" style="margin-top:6px;">학사일정 불러오기</button>'+
