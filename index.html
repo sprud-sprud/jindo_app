@@ -2961,6 +2961,7 @@ function renderSettingsLanding(el){
     ]},
     { label:'도움말', items:[
       ['guide','앱 사용 가이드','진도수첩 소개 슬라이드 다시 보기'],
+      ['blog','진도수첩 튜토리얼 & 사용 팁 (공식 블로그)','나이스 연동, 컴시간 엑셀 불러오기 등 상세한 가이드를 확인해보세요.'],
       ['feedback','버그 제보 및 피드백','불편한 점이나 아이디어를 보내주세요']
     ]}
   ];
@@ -2979,6 +2980,7 @@ function renderSettingsLanding(el){
     row.addEventListener('click', function(){
       var tab = row.getAttribute('data-tab');
       if(tab==='guide'){ openAppGuide(); return; }
+      if(tab==='blog'){ window.open('https://m.blog.naver.com/PostList.naver?blogId=sprudsprud&tab=1', '_blank'); return; }
       if(tab==='feedback'){ window.open('https://forms.gle/dJA31xx3MUq16cPEA', '_blank'); return; }
       state.settingsTab = tab;
       renderSettings();
