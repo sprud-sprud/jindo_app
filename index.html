@@ -2960,8 +2960,7 @@ function renderSettingsLanding(el){
       ['data','데이터 관리','백업 · 복원 · 내보내기']
     ]},
     { label:'도움말', items:[
-      ['guide','앱 사용 가이드','진도수첩 소개 슬라이드 다시 보기'],
-      ['blog','진도수첩 튜토리얼 & 사용 팁 (공식 블로그)','나이스 연동, 컴시간 엑셀 불러오기 등 상세한 가이드를 확인해보세요.'],
+      ['guide','앱 사용 가이드','사용 슬라이드 다시 보기 및 상세 튜토리얼'],
       ['feedback','버그 제보 및 피드백','불편한 점이나 아이디어를 보내주세요']
     ]}
   ];
@@ -2979,12 +2978,40 @@ function renderSettingsLanding(el){
   el.querySelectorAll('.settings-menu-row').forEach(function(row){
     row.addEventListener('click', function(){
       var tab = row.getAttribute('data-tab');
-      if(tab==='guide'){ openAppGuide(); return; }
-      if(tab==='blog'){ window.open('https://m.blog.naver.com/PostList.naver?blogId=sprudsprud&tab=1', '_blank'); return; }
+      if(tab==='guide'){ openGuideOptionsModal(); return; }
       if(tab==='feedback'){ window.open('https://forms.gle/dJA31xx3MUq16cPEA', '_blank'); return; }
       state.settingsTab = tab;
       renderSettings();
     });
+  });
+}
+
+// '앱 사용 가이드' 눌렀을 때: 슬라이드 다시 보기 / 공식 블로그, 둘 중 하나를 고르게 하는 모달
+function openGuideOptionsModal(){
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = '<div class="modal-box">'+
+    '<h3>앱 사용 가이드</h3>'+
+    '<div class="settings-menu">'+
+      '<div class="settings-menu-row" id="guideOptSlides">'+
+        '<div class="grow"><div class="smr-title">진도수첩 소개 슬라이드 다시 보기</div></div>'+
+        '<span class="smr-arrow">›</span></div>'+
+      '<div class="settings-menu-row" id="guideOptBlog">'+
+        '<div class="grow"><div class="smr-title">상세 튜토리얼 & 사용 팁 (공식 블로그)</div><div class="smr-sub">나이스 연동, 컴시간 엑셀 불러오기 등</div></div>'+
+        '<span class="smr-arrow">›</span></div>'+
+    '</div>'+
+    '<div class="modal-actions"><button class="btn ghost small" id="guideOptCancel" style="width:100%;">닫기</button></div>'+
+  '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#guideOptCancel').addEventListener('click', function(){ overlay.remove(); });
+  overlay.querySelector('#guideOptSlides').addEventListener('click', function(){
+    overlay.remove();
+    openAppGuide();
+  });
+  overlay.querySelector('#guideOptBlog').addEventListener('click', function(){
+    overlay.remove();
+    window.open('https://m.blog.naver.com/PostList.naver?blogId=sprudsprud&tab=1', '_blank');
   });
 }
 
