@@ -3316,6 +3316,9 @@ function applyGamsiganEntries(entries, included, nameMap){
     if(en.period > maxPeriod) maxPeriod = en.period;
   });
   state.settings.periodsPerDay = Math.min(10, maxPeriod);
+  // 방금 새로 만든 반들도 바로 학년/반 이름 순서에 맞는 예쁜 색으로 다시 입힌다 (다음 접속까지 기다릴 필요 없이)
+  state.settings.classes.slice().sort(function(a,b){ return naturalClassCompare(a.name,b.name); })
+    .forEach(function(c, i){ c.color = CLASS_COLORS[i % CLASS_COLORS.length]; });
   Promise.all([saveSettings(), savePlans()]).then(function(){
     var b = document.getElementById('settingsBody');
     if(b) renderSettingsTimetable(b);
@@ -4682,8 +4685,10 @@ function init(){
     if(!state.settings.themeMode) state.settings.themeMode = 'system';
     if(!state.settings.dayOverrides) state.settings.dayOverrides = {};
     if(!state.settings.makeupClasses) state.settings.makeupClasses = [];
-    // 반 색상 팔레트를 바꿨을 때 예전에 만든 반들도 새 팔레트로 다시 입혀준다 (등록 순서 기준)
-    state.settings.classes.forEach(function(c, i){ c.color = CLASS_COLORS[i % CLASS_COLORS.length]; });
+    // 반 색상은 등록 순서가 아니라 '학년/반 이름' 순서 기준으로 배정한다.
+    // (컴시간 불러오기처럼 여러 반이 한 번에 만들어질 때도 화면에 보이는 순서 그대로 색이 예쁘게 이어지도록)
+    state.settings.classes.slice().sort(function(a,b){ return naturalClassCompare(a.name,b.name); })
+      .forEach(function(c, i){ c.color = CLASS_COLORS[i % CLASS_COLORS.length]; });
     applyFontScale();
     applyTheme();
     state.settings.exams = state.settings.exams.map(function(e){
