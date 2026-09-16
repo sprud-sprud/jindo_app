@@ -459,15 +459,18 @@
     flex:1;
     display:flex;flex-direction:column;align-items:center;gap:3px;
     background:none;border:none;cursor:pointer;
-    color:var(--ink-faint);
+    color:var(--gray-400);
     font-family:'Pretendard',sans-serif;
     font-size:0.6875rem;font-weight:600;
     padding:6px 2px;
     border-radius:12px;
   }
-  .nav-btn .ico{display:flex;align-items:center;justify-content:center;transition:transform .12s ease;}
-  .nav-btn .ico svg{display:block;}
-  .nav-btn.active{color:var(--coral-deep);background:var(--coral-bg);}
+  .nav-btn .ico{position:relative;width:20px;height:20px;transition:transform .12s ease;}
+  .nav-btn .ico svg{position:absolute;top:0;left:0;display:block;transition:opacity .15s ease;}
+  .nav-btn .ico .ico-solid{opacity:0;}
+  .nav-btn.active .ico .ico-outline{opacity:0;}
+  .nav-btn.active .ico .ico-solid{opacity:1;}
+  .nav-btn.active{color:var(--coral-deep);}
   .nav-btn.active .ico{transform:scale(1.08);}
 
   section.view{display:none;opacity:0;transform:translateY(6px);transition:opacity .18s ease, transform .18s ease;}
@@ -776,19 +779,31 @@
 
   <nav class="bottom-nav">
     <button class="nav-btn active" data-view="today">
-      <span class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 3.5h6v2H9z" fill="currentColor" stroke="none"></path><path d="M8.5 13l2.3 2.3L16 10.3"></path></svg></span>
+      <span class="ico">
+        <svg class="ico-outline" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 3.5h6v2H9z" fill="currentColor" stroke="none"></path><path d="M8.5 13l2.3 2.3L16 10.3"></path></svg>
+        <svg class="ico-solid" viewBox="0 0 24 24" width="20" height="20"><rect x="5" y="4" width="14" height="17" rx="2" fill="currentColor"></rect><path d="M9 3.5h6v2H9z" fill="var(--card)"></path><path d="M8.5 13l2.3 2.3L16 10.3" fill="none" stroke="var(--card)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </span>
       오늘
     </button>
     <button class="nav-btn" data-view="classes">
-      <span class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="19" x2="6" y2="13"></line><line x1="12" y1="19" x2="12" y2="9"></line><line x1="18" y1="19" x2="18" y2="5"></line></svg></span>
+      <span class="ico">
+        <svg class="ico-outline" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="19" x2="6" y2="13"></line><line x1="12" y1="19" x2="12" y2="9"></line><line x1="18" y1="19" x2="18" y2="5"></line></svg>
+        <svg class="ico-solid" viewBox="0 0 24 24" width="20" height="20"><rect x="4.5" y="13" width="3" height="6" rx="1.2" fill="currentColor"></rect><rect x="10.5" y="9" width="3" height="10" rx="1.2" fill="currentColor"></rect><rect x="16.5" y="5" width="3" height="14" rx="1.2" fill="currentColor"></rect></svg>
+      </span>
       반별현황
     </button>
     <button class="nav-btn" data-view="exam">
-      <span class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10"></path><path d="M7 21h10"></path><path d="M8 3c0 4.2 3 6 4 7 1-1 4-2.8 4-7"></path><path d="M8 21c0-4.2 3-6 4-7 1 1 4 2.8 4 7"></path></svg></span>
+      <span class="ico">
+        <svg class="ico-outline" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10"></path><path d="M7 21h10"></path><path d="M8 3c0 4.2 3 6 4 7 1-1 4-2.8 4-7"></path><path d="M8 21c0-4.2 3-6 4-7 1 1 4 2.8 4 7"></path></svg>
+        <svg class="ico-solid" viewBox="0 0 24 24" width="20" height="20"><path d="M7 3h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M7 21h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M8 4c0 3.5 2.2 5.4 3.3 6.3.2.15.2.45 0 .6C10.2 11.8 8 13.7 8 17.2c0 .4.3.8.8.8h6.4c.5 0 .8-.4.8-.8 0-3.5-2.2-5.4-3.3-6.3a.4.4 0 0 1 0-.6C13.8 9.4 16 7.5 16 4H8z" fill="currentColor"></path></svg>
+      </span>
       D-day
     </button>
     <button class="nav-btn" data-view="settings">
-      <span class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"></line><circle cx="14" cy="6" r="1.8" fill="var(--card)"></circle><line x1="4" y1="12" x2="20" y2="12"></line><circle cx="9" cy="12" r="1.8" fill="var(--card)"></circle><line x1="4" y1="18" x2="20" y2="18"></line><circle cx="16" cy="18" r="1.8" fill="var(--card)"></circle></svg></span>
+      <span class="ico">
+        <svg class="ico-outline" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"></line><circle cx="14" cy="6" r="1.8" fill="var(--card)"></circle><line x1="4" y1="12" x2="20" y2="12"></line><circle cx="9" cy="12" r="1.8" fill="var(--card)"></circle><line x1="4" y1="18" x2="20" y2="18"></line><circle cx="16" cy="18" r="1.8" fill="var(--card)"></circle></svg>
+        <svg class="ico-solid" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"></line><circle cx="14" cy="6" r="2.4" fill="currentColor" stroke="var(--card)" stroke-width="1"></circle><line x1="4" y1="12" x2="20" y2="12"></line><circle cx="9" cy="12" r="2.4" fill="currentColor" stroke="var(--card)" stroke-width="1"></circle><line x1="4" y1="18" x2="20" y2="18"></line><circle cx="16" cy="18" r="2.4" fill="currentColor" stroke="var(--card)" stroke-width="1"></circle></svg>
+      </span>
       설정
     </button>
   </nav>
