@@ -157,10 +157,10 @@
   }
   button.icon-btn:active{background:var(--bg-soft);transform:scale(.94);}
 
-  .status-btn, .tab-pill, .card-folded, .excuse-btn, .nav-btn, .class-chip, .check, .now-focus-badge, .stamp, .settings-menu-row, .week-cell{
+  .status-btn, .tab-pill, .card-folded, .excuse-btn, .nav-btn, .class-chip, .check, .now-focus-badge, .stamp, .settings-menu-row, .week-cell, .quick-add-btn{
     transition:transform .1s ease, opacity .1s ease, background .12s ease, border-color .12s ease;
   }
-  .status-btn:active, .tab-pill:active, .card-folded:active, .excuse-btn:active, .nav-btn:active, .check:active, .settings-menu-row:active, .week-cell:active{
+  .status-btn:active, .tab-pill:active, .card-folded:active, .excuse-btn:active, .nav-btn:active, .check:active, .settings-menu-row:active, .week-cell:active, .quick-add-btn:active{
     transform:scale(.96);
   }
 
@@ -179,12 +179,16 @@
   .week-cell .wc-num{font-size:1.0625rem;font-weight:700;color:var(--ink);}
   .week-cell .wc-dot{width:4px;height:4px;border-radius:50%;background:var(--coral-deep);position:absolute;bottom:5px;}
   .week-cell.is-today .wc-dow{color:var(--coral-deep);}
-  .week-cell.selected{background:var(--ink);}
+  .week-cell.selected{background:var(--coral-deep);}
   .week-cell.selected .wc-dow{color:rgba(255,255,255,0.65);}
   .week-cell.selected .wc-num{color:#fff;}
-  .week-cell.selected .wc-dot{background:var(--coral);}
+  .week-cell.selected .wc-dot{background:#fff;}
 
   .month-sheet-box{max-width:420px;}
+  .ms-divider{height:1px;background:var(--line);margin:14px 0 12px;}
+  .ms-selected-date{font-size:0.875rem;font-weight:700;color:var(--ink);margin-bottom:6px;}
+  .ms-events{display:flex;flex-direction:column;gap:3px;}
+  .ms-event-item{font-size:0.8125rem;color:var(--ink-soft);line-height:1.4;}
 
   .card{
     position:relative;
@@ -292,16 +296,11 @@
   }
   .prev-progress b{color:var(--ink);font-weight:600;}
 
-  .prev-hero{background:var(--coral-bg);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
-  .prev-hero-label{font-size:0.6875rem;font-weight:700;color:var(--coral-deep);letter-spacing:.03em;margin-bottom:6px;}
+  .prev-hero{background:var(--bg-soft);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+  .prev-hero-label{font-size:0.6875rem;font-weight:700;color:var(--ink-faint);letter-spacing:.03em;margin-bottom:6px;text-transform:uppercase;}
   .prev-hero-value{font-size:1.125rem;font-weight:800;color:var(--ink);line-height:1.35;word-break:keep-all;}
   .prev-hero-meta{font-size:0.75rem;color:var(--ink-soft);margin-top:6px;display:flex;align-items:center;gap:4px;}
   .prev-hero.empty .prev-hero-value{font-size:0.9375rem;font-weight:600;color:var(--ink-soft);}
-  .card-section-divider{
-    display:flex;align-items:center;gap:8px;margin:14px 0 10px;
-    font-size:0.6875rem;font-weight:700;color:var(--ink-faint);letter-spacing:.04em;
-  }
-  .card-section-divider::after{content:'';flex:1;height:1px;background:var(--line);}
 
   .now-focus-badge{
     display:inline-flex;align-items:center;gap:4px;font-size:0.6875rem;font-weight:700;
@@ -354,9 +353,14 @@
   .report-row:last-child{border-bottom:none;}
   .report-stat{font-size:0.8125rem;color:var(--ink-soft);text-align:right;line-height:1.4;}
 
-  .memo-toggle{
-    font-size:0.75rem;color:var(--ink-soft);text-decoration:underline;
-    cursor:pointer;display:block;margin-top:12px;padding:2px 0;
+  .quick-add-row{display:flex;gap:8px;margin-top:12px;}
+  .quick-add-btn{
+    flex:1;text-align:center;font-size:0.75rem;font-weight:600;color:var(--ink-soft);
+    background:var(--bg-soft);border-radius:8px;padding:9px 10px;cursor:pointer;
+  }
+  .quick-add-btn.ghost-text{
+    flex:none;width:100%;background:none;color:var(--ink-faint);font-weight:500;
+    text-decoration:underline;padding:4px 0;margin-top:12px;text-align:center;font-size:0.75rem;
   }
   .memo-wrap{margin-top:8px;display:none;}
   .memo-wrap.show{display:block;}
@@ -1992,7 +1996,8 @@ function buildExtraSectionHtml(classId, mainItemId, extraItems){
     ('<div class="extra-add-row"><select class="extra-item-select">'+
       addableItems.map(function(it){ var i=items.indexOf(it); return '<option value="'+it.id+'">'+(i+1)+'. '+escapeHtml(it.title)+'</option>'; }).join('')+
       '</select><button type="button" class="btn ghost small add-extra-btn">추가</button></div>')
-    : (items.length ? '<p class="small-note" style="margin:4px 0 0;">추가할 수 있는 진도 항목이 없어요.</p>' : '');
+    : (items.length ? '<p class="small-note" style="margin:4px 0 0;">추가할 수 있는 진도 항목이 없어요.</p>'
+      : '<p class="small-note" style="margin:4px 0 0;">설정 &gt; 진도계획에서 이 반의 진도 항목을 먼저 등록해주세요.</p>');
   return { listHtml: listHtml, addHtml: addHtml };
 }
 
@@ -2016,7 +2021,7 @@ function renderDayCard(dateStr, period, classId, isFocus, isMakeup){
     '</div>';
   }
 
-  var opts = '<option value="">— 항목 선택 (직접 입력) —</option>';
+  var opts = '<option value="">진도 항목 선택</option>';
   items.forEach(function(it,i){
     var label = (i+1)+'. '+escapeHtml(it.title)+(it.targetPage?(' ('+escapeHtml(it.targetPage)+')'):'')+(it.done?' ✓':'');
     opts += '<option value="'+it.id+'"'+(mainItemId===it.id?' selected':'')+'>'+label+'</option>';
@@ -2057,31 +2062,32 @@ function renderDayCard(dateStr, period, classId, isFocus, isMakeup){
   var extraParts = buildExtraSectionHtml(classId, mainItemId, extraItems);
   var hasExtra = extraItems.length>0;
   var focusBadge = isFocus ? '<div class="now-focus-badge">'+statusIconSvg('inProgress',12)+' 지금 이 시간</div>' : '';
+  var uidSuffix = period+'-'+classId;
+  var extraWrapId = 'extraWrap-'+uidSuffix, memoWrapId = 'memoWrap-'+uidSuffix, excuseWrapId = 'excuseWrap-'+uidSuffix;
 
   return '<div class="card'+(isFocus?' is-focus':'')+'" data-period="'+period+'" data-class="'+classId+'"'+(isMakeup?' data-makeup="1"':'')+'>'+
     '<div class="card-head"><span class="period-tag">'+periodTagLabel(period)+'</span>'+
     '<span class="class-chip" style="background:'+cls.color+'">'+escapeHtml(cls.name)+'</span>'+makeupBadge+stamp+'</div>'+
     focusBadge+
     prevHtml+
-    '<div class="card-section-divider">오늘 진도 입력</div>'+
-    '<div class="field-row"><label>진도 항목</label><select class="f-item">'+opts+'</select></div>'+
-    '<div class="field-row"><label>오늘 어디까지 (쪽/문단/번호)</label><div class="page-row">'+
-      '<input type="text" class="f-page" placeholder="예: 45쪽까지" value="'+escapeHtml(rec.pageText||'')+'">'+
-    '</div></div>'+
-    '<div class="field-row"><label>진행 상태</label><div class="status-seg">'+statusBtns+'</div></div>'+
-    '<div class="memo-toggle extra-toggle">추가 진도 기록 '+(hasExtra?'수정':'추가')+'</div>'+
-    '<div class="memo-wrap extra-wrap'+(hasExtra?' show':'')+'">'+
+    '<select class="f-item">'+opts+'</select>'+
+    '<div class="page-row" style="margin-top:8px;"><input type="text" class="f-page" placeholder="범위 입력 (예: 45쪽까지)" value="'+escapeHtml(rec.pageText||'')+'"></div>'+
+    '<div class="status-seg" style="margin-top:12px;">'+statusBtns+'</div>'+
+    '<div class="quick-add-row">'+
+      '<span class="quick-add-btn" data-toggle-target="'+extraWrapId+'">+ 추가 진도'+(hasExtra?' 수정':'')+'</span>'+
+      '<span class="quick-add-btn" data-toggle-target="'+memoWrapId+'">+ 발표/메모'+((memo||presenter)?' 수정':'')+'</span>'+
+    '</div>'+
+    '<div class="memo-wrap extra-wrap'+(hasExtra?' show':'')+'" id="'+extraWrapId+'">'+
       '<p class="small-note" style="margin:2px 0 8px;">오늘 원래 나갈 진도 말고 추가로 더 나간 항목이 있으면 여기서 따로 기록하세요. 메인 항목 상태와는 별개로 관리돼요.</p>'+
       '<div class="extra-section"><div class="extra-list">'+extraParts.listHtml+'</div>'+extraParts.addHtml+'</div>'+
     '</div>'+
-    '<div class="memo-toggle">발표/메모 '+((memo||presenter)?'수정':'추가')+'</div>'+
-    '<div class="memo-wrap'+((memo||presenter)?' show':'')+'">'+
+    '<div class="memo-wrap'+((memo||presenter)?' show':'')+'" id="'+memoWrapId+'">'+
       '<div class="field-row"><label>오늘 발표자 (있으면)</label><input type="text" class="f-presenter" placeholder="예: 김OO, 박OO" value="'+escapeHtml(presenter)+'"></div>'+
       '<div class="field-row"><label>메모 (발표 내용, 특이사항 등)</label><textarea class="f-memo" rows="2" placeholder="예: 김OO 이차방정식 풀이 발표">'+escapeHtml(memo)+'</textarea></div>'+
     '</div>'+
-    '<button type="button" class="btn save-progress-btn" style="width:100%;margin-top:14px;">진도 저장</button>'+
-    '<div class="memo-toggle">오늘 수업 없었나요?</div>'+
-    '<div class="memo-wrap"><div class="excuse-toggle-row">'+
+    '<button type="button" class="btn save-progress-btn" style="width:100%;margin-top:12px;">진도 저장</button>'+
+    '<div class="quick-add-btn ghost-text" data-toggle-target="'+excuseWrapId+'">오늘 수업 없었나요?</div>'+
+    '<div class="memo-wrap" id="'+excuseWrapId+'"><div class="excuse-toggle-row">'+
       EXCUSE_REASONS.map(function(r){ return '<span class="excuse-btn" data-reason="'+r+'">'+r+'</span>'; }).join('')+
     '</div></div>'+
   '</div>';
@@ -2155,8 +2161,8 @@ function bindOneCard(card, dateStr, isFocus, isMakeup){
     var parts = buildExtraSectionHtml(classId, draft.itemId, draft.extraItems);
     var section = card.querySelector('.extra-section');
     section.innerHTML = '<div class="extra-list">'+parts.listHtml+'</div>'+parts.addHtml;
-    var toggle = card.querySelector('.extra-toggle');
-    toggle.textContent = '추가 진도 기록 '+(draft.extraItems.length?'수정':'추가');
+    var toggle = card.querySelector('.quick-add-btn[data-toggle-target^="extraWrap-"]');
+    if(toggle) toggle.textContent = '+ 추가 진도'+(draft.extraItems.length?' 수정':'');
     bindExtraControls();
   }
   function bindExtraControls(){
@@ -2200,10 +2206,12 @@ function bindOneCard(card, dateStr, isFocus, isMakeup){
       card.querySelectorAll('.status-btn').forEach(function(b){ b.classList.toggle('on', b===btn); });
     });
   });
-  card.querySelectorAll('.memo-toggle').forEach(function(toggle){
+  var toggleBtns = card.querySelectorAll('.quick-add-btn[data-toggle-target]');
+  var toggleWraps = card.querySelectorAll('.memo-wrap');
+  toggleBtns.forEach(function(toggle, ti){
     toggle.addEventListener('click', function(){
-      var wrap = toggle.nextElementSibling;
-      if(wrap && wrap.classList.contains('memo-wrap')) wrap.classList.toggle('show');
+      var wrap = card.querySelector('#'+CSS.escape(toggle.getAttribute('data-toggle-target'))) || toggleWraps[ti];
+      if(wrap) wrap.classList.toggle('show');
     });
   });
 
@@ -2590,10 +2598,36 @@ function animateDayJump(dateStr){
   }, 100);
 }
 
+// 그 날짜에 걸리는 학사일정(시험/나이스 행사/공휴일/수동 목표일)을 모아서 문자열 목록으로 돌려준다.
+function getEventsForDate(ds){
+  var events = [];
+  state.settings.exams.forEach(function(e){
+    if(ds>=e.startDate && ds<=e.endDate){
+      var label = e.name;
+      if(e.endDate !== e.startDate){
+        var dayIdx = Math.round((parseDate(ds)-parseDate(e.startDate))/86400000)+1;
+        label += ' '+dayIdx+'일차';
+      }
+      events.push(label);
+    }
+  });
+  var neisEv = findNeisEvent(ds);
+  if(neisEv && neisEv.name) events.push(neisEv.name);
+  if(isAutoHolidayActive(ds)){
+    var h = findAutoHoliday(ds);
+    if(h) events.push(h.name);
+  }
+  (state.settings.customDdays||[]).forEach(function(dd){ if(dd.date===ds) events.push(dd.name); });
+  if(state.settings.holidays.indexOf(ds)!==-1) events.push('지정 휴일');
+  return events;
+}
+
 // 이번 주를 벗어난 날짜로 가고 싶을 때 여는 월간 달력 바텀시트
 var monthSheetYm = null;
+var monthSheetSelectedDate = null;
 function openMonthSheet(){
   monthSheetYm = ymOf(state.currentDate);
+  monthSheetSelectedDate = state.currentDate;
   var overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.id = 'monthSheetOverlay';
@@ -2618,7 +2652,7 @@ function renderMonthSheet(){
     for(var day=1; day<=daysInMonth; day++){
       var ds = ym+'-'+pad2(day);
       var isToday = ds===todayStr();
-      var isSelected = ds===state.currentDate;
+      var isSelected = ds===monthSheetSelectedDate;
       var isHoliday = isHolidayEffective(ds);
       var isVacation = !isHoliday && !inAnySemester(ds);
       var recs = monthData[ds] || [];
@@ -2629,17 +2663,35 @@ function renderMonthSheet(){
       html += '<div class="'+cls+'" data-date="'+ds+'"><span class="num">'+day+'</span>'+(exam?'<span class="exam-flag"></span>':'')+'<div class="dots">'+dotsHtml+'</div></div>';
     }
     html += '</div>';
+
+    // 선택한 날짜의 학사일정을 그리드 바로 아래에 이어서 보여준다.
+    if(monthSheetSelectedDate && ymOf(monthSheetSelectedDate)===ym){
+      var sd = monthSheetSelectedDate;
+      var events = getEventsForDate(sd);
+      html += '<div class="ms-divider"></div>';
+      html += '<div class="ms-selected-date">'+niceDate(sd)+' ('+dayKorOf(sd)+')</div>';
+      html += '<div class="ms-events">';
+      html += events.length ? events.map(function(ev){ return '<div class="ms-event-item">· '+escapeHtml(ev)+'</div>'; }).join('')
+        : '<p class="small-note" style="margin:0;">등록된 학사일정이 없습니다.</p>';
+      html += '</div>';
+      html += '<button class="btn small" id="msGoto" style="width:100%;margin-top:10px;">이동하기</button>';
+    }
+
     inner.innerHTML = html;
     document.getElementById('msPrev').onclick = function(){ monthSheetYm = shiftYm(monthSheetYm,-1); renderMonthSheet(); };
     document.getElementById('msNext').onclick = function(){ monthSheetYm = shiftYm(monthSheetYm,1); renderMonthSheet(); };
     inner.querySelectorAll('.cal-cell[data-date]').forEach(function(cell){
       cell.addEventListener('click', function(){
-        var ds = cell.getAttribute('data-date');
-        var ov = document.getElementById('monthSheetOverlay');
-        if(ov) ov.remove();
-        state.currentDate = ds;
-        goToDate(ds);
+        monthSheetSelectedDate = cell.getAttribute('data-date');
+        renderMonthSheet();
       });
+    });
+    var gotoBtn = document.getElementById('msGoto');
+    if(gotoBtn) gotoBtn.addEventListener('click', function(){
+      var ov = document.getElementById('monthSheetOverlay');
+      if(ov) ov.remove();
+      state.currentDate = monthSheetSelectedDate;
+      goToDate(monthSheetSelectedDate);
     });
   });
 }
