@@ -349,9 +349,31 @@
   .onboarding-class-chip .x{cursor:pointer;color:var(--ink-faint);width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:50%;}
   .onboarding-class-chip .x:hover{background:var(--line);}
 
-  .report-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);}
-  .report-row:last-child{border-bottom:none;}
-  .report-stat{font-size:0.8125rem;color:var(--ink-soft);text-align:right;line-height:1.4;}
+  .wr-modal-box{padding:0;overflow:hidden;}
+  .wr-viewport{display:flex;width:200%;transition:transform .3s ease;}
+  .wr-viewport.go-step2{transform:translateX(-50%);}
+  .wr-step{width:50%;flex-shrink:0;display:flex;flex-direction:column;max-height:85vh;transition:opacity .3s ease;}
+  .wr-step1{opacity:1;}
+  .wr-step2{opacity:0;}
+  .wr-viewport.go-step2 .wr-step1{opacity:0;}
+  .wr-viewport.go-step2 .wr-step2{opacity:1;}
+  .wr-scroll{flex:1;overflow-y:auto;padding:20px 18px 4px;}
+  .wr-step2-scroll{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;}
+  .wr-actions{margin:0;padding:14px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);flex-shrink:0;}
+  .wr-class-block{margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line);}
+  .wr-class-block:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .wr-class-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .wr-session-count{font-size:0.75rem;color:var(--ink-faint);}
+  .wr-item{font-size:0.8125rem;color:var(--ink-soft);line-height:1.55;}
+  .wr-item.wr-empty{color:var(--ink-faint);}
+  .wr-item-page{color:var(--ink-faint);}
+  .wr-exam-badge{display:inline-block;font-size:0.75rem;font-weight:700;padding:4px 10px;border-radius:8px;margin-top:6px;}
+  .wr-exam-badge.done{background:var(--coral-bg);color:var(--coral-deep);}
+  .wr-exam-badge.pending{background:var(--bg-soft);color:var(--ink-soft);}
+  .wr-memo{font-size:0.75rem;color:var(--ink-faint);margin-top:6px;font-style:italic;}
+  .wr-clover{margin-bottom:14px;}
+  .wr-cheer-title{font-size:1.125rem;font-weight:800;color:var(--ink);margin-bottom:10px;}
+  .wr-cheer-text{font-size:0.9375rem;color:var(--ink-soft);line-height:1.6;}
 
   .quick-add-row{display:flex;gap:8px;margin-top:12px;}
   .quick-add-btn{
@@ -538,6 +560,7 @@
   .badge.slow{background:var(--coral-bg);color:var(--coral-deep);}
   .badge.fast{background:var(--gray-100);color:var(--gray-700);}
   .badge.complete{background:var(--coral-deep);color:#fff;}
+  .classes-top-row{display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px;}
 
   .confetti-container{position:fixed;inset:0;pointer-events:none;z-index:10000;overflow:hidden;}
   .confetti-piece{
@@ -2758,8 +2781,8 @@ function renderClasses(){
   }
   stats.sort(function(a,b){ return naturalClassCompare(a.cls.name, b.cls.name); });
 
-  var html = '<h1 style="margin:6px 0 4px;">반별 진도 현황</h1>';
-  html += '<button class="btn ghost small" id="weeklyReportBtn" style="margin-bottom:14px;">지난주 진도 요약 보기</button>';
+  var html = '<div class="classes-top-row"><h1 style="margin:0;">반별 진도 현황</h1>'+
+    '<button class="icon-btn" id="weeklyReportBtn" title="지난주 진도 요약"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M8 17V11"></path><path d="M12 17V7"></path><path d="M16 17v-4"></path></svg></button></div>';
 
   stats.forEach(function(s){
     var c = s.cls, st = s.stat;
@@ -4674,17 +4697,43 @@ function getLastWeekRange(dateStr){
   return { start:lastMonday, end:lastSunday };
 }
 function weeklyReportData(startStr, endStr){
+  var today = todayStr();
+  var writtenExams = state.settings.exams.filter(function(e){ return e.type==='writtenExam'; })
+    .slice().sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
   return state.settings.classes.map(function(c){
     var items = state.plans[c.id] || [];
     var doneItems = items.filter(function(it){ return it.doneDate && it.doneDate>=startStr && it.doneDate<=endStr; });
     var sessionCount = 0;
+    var memos = [];
     var d = startStr, guard = 0;
     while(d <= endStr && guard < 14){
-      getRecords(d).forEach(function(r){ if(r.classId===c.id && (r.saved || r.excused)) sessionCount++; });
+      getRecords(d).forEach(function(r){
+        if(r.classId!==c.id) return;
+        if(r.saved || r.excused) sessionCount++;
+        if(r.memo) memos.push(r.memo);
+      });
       d = addDays(d, 1);
       guard++;
     }
-    return { cls:c, doneCount: doneItems.length, sessionCount: sessionCount };
+    // 다가오는 지필평가 기준으로 '시험 범위 진도' 피드백을 만든다.
+    var examFeedback = null;
+    var upcomingExam = writtenExams.filter(function(e){ return e.endDate>=today; })[0] || null;
+    if(upcomingExam){
+      var idx = writtenExams.indexOf(upcomingExam);
+      var prevExam = writtenExams[idx-1] || null;
+      var startOrder = (prevExam && prevExam.examTargetOrder) ? prevExam.examTargetOrder : 0;
+      var st = examTargetStats(c.id, upcomingExam, startOrder);
+      if(st.total>0){
+        if(st.remain<=0){
+          examFeedback = { done:true, examName:upcomingExam.name };
+        } else {
+          var sessionsFrom = prevExam && prevExam.endDate > today ? prevExam.endDate : today;
+          var sessionsLeft = countSessions(c.id, sessionsFrom, upcomingExam.startDate);
+          examFeedback = { done:false, examName:upcomingExam.name, sessionsLeft: sessionsLeft };
+        }
+      }
+    }
+    return { cls:c, doneItems:doneItems, sessionCount:sessionCount, memos:memos, examFeedback:examFeedback };
   });
 }
 function showWeeklyReportModal(markShown){
@@ -4693,24 +4742,67 @@ function showWeeklyReportModal(markShown){
     var data = weeklyReportData(range.start, range.end);
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    var rows = data.map(function(d){
-      return '<div class="report-row"><span class="class-chip" style="background:'+d.cls.color+'">'+escapeHtml(d.cls.name)+'</span>'+
-        '<span class="report-stat">'+(d.doneCount>0 ? ('완료 항목 '+d.doneCount+'개') : '완료된 항목 없음')+'<br>수업 기록 '+d.sessionCount+'회</span></div>';
+
+    var step1Body = data.map(function(d){
+      var itemsHtml = d.doneItems.length
+        ? d.doneItems.map(function(it){ return '<div class="wr-item">· '+escapeHtml(it.title)+(it.donePage?(' <span class="wr-item-page">('+escapeHtml(it.donePage)+')</span>'):'')+'</div>'; }).join('')
+        : '<div class="wr-item wr-empty">지난주에 기록된 진도가 없어요.</div>';
+      var examHtml = '';
+      if(d.examFeedback){
+        examHtml = d.examFeedback.done
+          ? '<div class="wr-exam-badge done">시험 범위 진도 완료!</div>'
+          : '<div class="wr-exam-badge pending">'+escapeHtml(d.examFeedback.examName)+'까지 '+d.examFeedback.sessionsLeft+'차시 남음</div>';
+      }
+      var memoHtml = d.memos.length
+        ? '<div class="wr-memo">'+d.memos.slice(0,3).map(function(m){ return escapeHtml(m); }).join(' · ')+'</div>'
+        : '';
+      return '<div class="wr-class-block">'+
+        '<div class="wr-class-head"><span class="class-chip" style="background:'+d.cls.color+'">'+escapeHtml(d.cls.name)+'</span>'+
+        '<span class="wr-session-count">수업 '+d.sessionCount+'회</span></div>'+
+        itemsHtml+examHtml+memoHtml+
+      '</div>';
     }).join('');
-    overlay.innerHTML = '<div class="modal-box">'+
-      '<h3>지난주 진도 요약</h3>'+
-      '<p class="small-note" style="margin:-8px 0 14px;">'+niceDate(range.start)+' ~ '+niceDate(range.end)+'</p>'+
-      (data.length ? rows : '<p class="small-note">등록된 반이 없어요.</p>')+
-      '<div class="modal-actions"><button class="btn" id="reportCloseBtn" style="width:100%;">확인했어요</button></div>'+
+
+    overlay.innerHTML = '<div class="modal-box wr-modal-box">'+
+      '<div class="wr-viewport">'+
+        '<div class="wr-step wr-step1" id="wrStep1">'+
+          '<div class="wr-scroll">'+
+            '<h3>지난주 진도 요약 리포트</h3>'+
+            '<p class="small-note" style="margin:-10px 0 14px;">'+niceDate(range.start)+' ~ '+niceDate(range.end)+'</p>'+
+            (data.length ? step1Body : '<p class="small-note">등록된 반이 없어요.</p>')+
+          '</div>'+
+          '<div class="modal-actions wr-actions"><button class="btn" id="wrNextBtn" style="width:100%;">다음 (응원 한 마디)</button></div>'+
+        '</div>'+
+        '<div class="wr-step wr-step2" id="wrStep2">'+
+          '<div class="wr-scroll wr-step2-scroll">'+
+            '<div class="wr-clover">'+cloverIconSvg(48)+'</div>'+
+            '<div class="wr-cheer-title">월요일 응원 카드</div>'+
+            '<div class="wr-cheer-text">선생님, 이번 주도 무사히 칼퇴하시고<br>행운 가득한 한 주 되세요!</div>'+
+          '</div>'+
+          '<div class="modal-actions wr-actions"><button class="btn" id="wrDoneBtn" style="width:100%;">이번 주도 화이팅!</button></div>'+
+        '</div>'+
+      '</div>'+
     '</div>';
     document.body.appendChild(overlay);
     overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
-    overlay.querySelector('#reportCloseBtn').addEventListener('click', function(){ overlay.remove(); });
+    overlay.querySelector('#wrNextBtn').addEventListener('click', function(){
+      overlay.querySelector('.wr-viewport').classList.add('go-step2');
+    });
+    overlay.querySelector('#wrDoneBtn').addEventListener('click', function(){ overlay.remove(); });
     if(markShown){
       state.settings.lastWeeklyReportShown = todayStr();
       saveSettings();
     }
   });
+}
+function cloverIconSvg(size){
+  return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="var(--coral-deep)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+
+    '<path d="M12 12c0-2.5-2-4.5-4.5-4.5S3 9.5 3 12s2 4.5 4.5 4.5S12 14.5 12 12z"></path>'+
+    '<path d="M12 12c0-2.5 2-4.5 4.5-4.5S21 9.5 21 12s-2 4.5-4.5 4.5S12 14.5 12 12z"></path>'+
+    '<path d="M12 12c-2.5 0-4.5-2-4.5-4.5S9.5 3 12 3s4.5 2 4.5 4.5S14.5 12 12 12z"></path>'+
+    '<path d="M12 12c-2.5 0-4.5 2-4.5 4.5S9.5 21 12 21s4.5-2 4.5-4.5S14.5 12 12 12z"></path>'+
+    '<path d="M12 12v9" stroke-width="1.4"></path>'+
+  '</svg>';
 }
 function maybeShowWeeklyReport(){
   if(!state.settings.onboardingDone) return; // 아직 온보딩 중인 신규 사용자는 건너뜀
