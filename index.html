@@ -1346,6 +1346,55 @@ function countSessions(classId, fromExclusive, toInclusive){
   return count;
 }
 
+// 진도표 양식(.xlsx) 다운로드: 과목/차시/수업내용/완료여부 4개 열짜리 빈 템플릿
+function downloadExcelTemplate(){
+  var wsData = [
+    ['과목','차시','수업내용','완료여부'],
+    ['예: 2학년 3반','1','1단원 도입 - 발음 규칙','미완료'],
+    ['예: 2학년 3반','2','1단원 본문 읽기','완료']
+  ];
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '진도양식');
+  XLSX.writeFile(wb, '진도수첩_양식.xlsx');
+}
+
+// 엑셀/CSV에서 읽어온 행들을 기존 진도 목록 뒤에 이어 붙인다.
+// '과목' 이름이 이미 등록된 반과 같으면 그 반에, 없는 이름이면 새 반을 만들어서 추가한다.
+function applyPlanImportRows(rows){
+  if(!rows || !rows.length){ alert('불러올 데이터가 없어요.'); return; }
+  var nameToId = {};
+  state.settings.classes.forEach(function(c){ nameToId[c.name] = c.id; });
+  var addedCount = 0, newClassNames = [];
+  rows.forEach(function(row){
+    var subject = String(row['과목']||'').trim();
+    var content = String(row['수업내용']||'').trim();
+    if(!subject || !content) return;
+    var doneVal = String(row['완료여부']||'').trim();
+    var isDone = /^(완료|y|yes|true|1|o)$/i.test(doneVal);
+    var classId = nameToId[subject];
+    if(!classId){
+      classId = uid();
+      var color = CLASS_COLORS[state.settings.classes.length % CLASS_COLORS.length];
+      state.settings.classes.push({ id:classId, name:subject, color:color, grade:'' });
+      state.plans[classId] = [];
+      nameToId[subject] = classId;
+      newClassNames.push(subject);
+    }
+    var item = { id:uid(), title:content, targetPage:'', done:isDone, status:isDone?'done':'pending', doneDate:isDone?todayStr():null, donePage:'' };
+    if(!state.plans[classId]) state.plans[classId] = [];
+    state.plans[classId].push(item);
+    addedCount++;
+  });
+  if(!addedCount){ alert('가져올 수 있는 행이 없었어요. "과목"과 "수업내용" 칸이 채워져 있는지 확인해주세요.'); return; }
+  Promise.all([saveSettings(), savePlans()]).then(function(){
+    flashSaved();
+    var body = document.getElementById('settingsBody');
+    if(body) renderSettingsData(body);
+    alert('진도 '+addedCount+'개를 불러왔어요.'+(newClassNames.length?(' 새로 만든 반: '+newClassNames.join(', ')):''));
+  });
+}
+
 function exportExcel(btn){
   var origText = btn.textContent;
   btn.textContent = '내보내는 중...';
@@ -2953,9 +3002,65 @@ function renderDrillMenu(container, items, onSelect){
 }
 
 // ---------- 컴시간 알리미 엑셀 시간표 불러오기 ----------
-// 학교/버전마다 내보내기 형식이 조금씩 달라서, 두 가지 흔한 형태를 순서대로 시도한다.
-// 1) 행 기반 표: 교사/요일/교시/과목/반 같은 열이 있는 목록형 시트 (전체 교사 시간표에서 흔함)
-// 2) 격자형 표: 월화수목금 열 + 교시 행으로 된 그리드형 시트 (개인 주간시간표에서 흔함)
+// 학교/버전마다 내보내기 형식이 조금씩 달라서, 세 가지 흔한 형태를 순서대로 시도한다.
+// 1) 전체시간표 그리드: '요일/교시' 열 + 학년-반이 가로로 쭉 나열되고, 칸 안에 '과목\n교사명'이 들어있는 형태 (학교 전체시간표에서 흔함)
+// 2) 행 기반 표: 교사/요일/교시/과목/반 같은 열이 있는 목록형 시트
+// 3) 격자형 표: 월화수목금 열 + 교시 행으로 된 단순 그리드형 시트 (개인 주간시간표에서 흔함)
+
+// 1번 형태 전용 파서. '요일'/'교시' 헤더가 있는 행을 찾고, 그 바로 위 행에서 학년(1학년/2학년...),
+// 바로 아래 행에서 반 번호(1~9)를 읽어 각 열이 몇 학년 몇 반인지 알아낸다.
+// 학년/요일 칸은 엑셀에서 병합돼있어서 빈 칸이 나오면 바로 왼쪽(또는 위) 값을 그대로 이어서 쓴다(carry-forward).
+function parseFullSchoolGrid(rows){
+  var headerRow1 = -1;
+  for(var r=0; r<Math.min(rows.length,12); r++){
+    var row = rows[r]||[];
+    var c0 = String(row[0]||'').split(/\r?\n/)[0].trim();
+    var c1 = String(row[1]||'').split(/\r?\n/)[0].trim();
+    if(c0==='요일' && c1==='교시'){ headerRow1 = r; break; }
+  }
+  if(headerRow1===-1) return null;
+  var headerRow2 = headerRow1+1;
+  var gradeRow = rows[headerRow1]||[];
+  var classRow = rows[headerRow2]||[];
+  var maxCol = 0;
+  rows.forEach(function(row){ if(row && row.length>maxCol) maxCol = row.length; });
+
+  var colLabel = {};
+  var lastGrade = '';
+  for(var c=2; c<maxCol; c++){
+    var g = String(gradeRow[c]||'').split(/\r?\n/)[0].trim();
+    if(g) lastGrade = g;
+    var cls = String(classRow[c]||'').split(/\r?\n/)[0].trim();
+    if(lastGrade && cls) colLabel[c] = lastGrade+' '+cls+'반';
+  }
+  if(!Object.keys(colLabel).length) return null;
+
+  var entries = [];
+  var teacherSet = {};
+  var lastDay = '';
+  for(var r2=headerRow2+1; r2<rows.length; r2++){
+    var row2 = rows[r2];
+    if(!row2) continue;
+    var dRaw = String(row2[0]||'').split(/\r?\n/)[0].replace('요일','').trim();
+    if(dRaw && DAYS.indexOf(dRaw)!==-1) lastDay = dRaw;
+    var pRaw = String(row2[1]||'').trim();
+    var period = parseInt(pRaw.replace(/[^0-9]/g,''),10);
+    if(!lastDay || !period) continue;
+    for(var c2=2; c2<maxCol; c2++){
+      if(!colLabel[c2]) continue;
+      var cellRaw = String(row2[c2]||'').trim();
+      if(!cellRaw) continue;
+      var parts = cellRaw.split(/\r?\n/);
+      var subject = (parts[0]||'').trim();
+      var teacher = (parts[1]||'').trim();
+      if(!subject) continue;
+      if(teacher) teacherSet[teacher] = true;
+      entries.push({ teacher:teacher, day:lastDay, period:period, label:colLabel[c2] });
+    }
+  }
+  return { entries: entries, teachers: Object.keys(teacherSet) };
+}
+
 function parseGamsiganWorkbook(wb){
   var allEntries = [];
   var teacherSet = {};
@@ -2964,6 +3069,13 @@ function parseGamsiganWorkbook(wb){
     var rows;
     try{ rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:false}); }catch(e){ return; }
     if(!rows || !rows.length) return;
+
+    var gridResult = parseFullSchoolGrid(rows);
+    if(gridResult && gridResult.entries.length){
+      gridResult.entries.forEach(function(en){ allEntries.push(en); });
+      gridResult.teachers.forEach(function(t){ teacherSet[t] = true; });
+      return;
+    }
 
     var headerRowIdx = -1, colIdx = {};
     for(var r=0; r<Math.min(rows.length, 10); r++){
@@ -3211,9 +3323,14 @@ function renderSettingsData(body){
 }
 
 function buildDataHtml(){
-  var html = '<div class="settings-section"><h3>데이터 내보내기</h3>'+
-    '<p class="small-note">지금까지 기록한 진도, 계획, 시간표를 엑셀 파일로 저장해요.</p>'+
-    '<button class="btn ghost small" id="exportBtn">엑셀로 내보내기</button></div>';
+  var html = '<div class="settings-section"><h3>진도표 가져오기 / 내보내기</h3>'+
+    '<p class="small-note">기존 엑셀 진도표를 불러오거나, 기록한 진도·계획을 엑셀 파일로 저장해요.</p>'+
+    '<div class="add-row" style="flex-wrap:wrap;">'+
+      '<button class="btn ghost small" id="planTemplateBtn">엑셀 양식 다운로드</button>'+
+      '<button class="btn ghost small" id="planImportBtn">엑셀에서 가져오기</button>'+
+      '<button class="btn ghost small" id="exportBtn">엑셀로 내보내기</button>'+
+    '</div>'+
+    '<input type="file" id="planImportFileInput" accept=".xlsx,.xls,.csv" style="display:none;"></div>';
   html += '<div class="settings-section"><h3>전체 데이터 백업</h3>'+
     '<p class="small-note">다른 기기나 브라우저로 옮길 때 사용해요. 내보낸 파일을 그 기기에서 불러오면 지금 상태 그대로 복원돼요.</p>'+
     '<div class="add-row"><button class="btn ghost small" id="backupExportBtn">백업 파일 내보내기</button>'+
@@ -3238,6 +3355,31 @@ function buildDataHtml(){
 function bindDataEvents(body){
   document.getElementById('exportBtn').addEventListener('click', function(){
     exportExcel(this);
+  });
+  document.getElementById('planTemplateBtn').addEventListener('click', function(){
+    downloadExcelTemplate();
+  });
+  document.getElementById('planImportBtn').addEventListener('click', function(){
+    document.getElementById('planImportFileInput').click();
+  });
+  document.getElementById('planImportFileInput').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    var isCsv = /\.csv$/i.test(file.name);
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      try{
+        var wb = isCsv ? XLSX.read(ev.target.result, {type:'string'}) : XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+        var sheet = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+        applyPlanImportRows(rows);
+      }catch(err){
+        console.error(err);
+        alert('파일을 읽는 중 문제가 생겼어요. 엑셀(.xlsx) 또는 CSV 파일이 맞는지 확인해주세요.');
+      }
+    };
+    if(isCsv) reader.readAsText(file, 'UTF-8'); else reader.readAsArrayBuffer(file);
   });
   document.getElementById('backupExportBtn').addEventListener('click', function(){
     exportJSONBackup(this);
