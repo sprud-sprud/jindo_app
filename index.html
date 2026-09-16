@@ -1245,6 +1245,23 @@ function recItemIds(rec){
   return out;
 }
 
+// 학년/반 이름 자연 정렬 (숫자 부분을 진짜 숫자로 비교해서 "2반" 다음에 "10반"이 오도록)
+function naturalClassCompare(a, b){
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+}
+// 날짜가 오늘과 가까운 순서로 정렬한다: 오늘 이후(D-day)는 가까운 날짜부터, 이미 지난 일정은 맨 아래로 내려서
+// 그 안에서는 가장 최근에 지난 것부터 보여준다.
+function sortByProximityToToday(list, getDate, todayStr2){
+  return list.slice().sort(function(a, b){
+    var da = Math.ceil((parseDate(getDate(a)) - parseDate(todayStr2)) / 86400000);
+    var db = Math.ceil((parseDate(getDate(b)) - parseDate(todayStr2)) / 86400000);
+    var aFuture = da >= 0, bFuture = db >= 0;
+    if(aFuture && !bFuture) return -1;
+    if(!aFuture && bFuture) return 1;
+    if(aFuture && bFuture) return da - db;
+    return db - da;
+  });
+}
 function classStats(classId){
   var items = state.plans[classId] || [];
   var total = items.length;
@@ -2672,7 +2689,7 @@ function renderClasses(){
     slowestId = sorted[0].stat.ratio < sorted[sorted.length-1].stat.ratio ? sorted[0].cls.id : null;
     fastestId = sorted[sorted.length-1].stat.ratio > sorted[0].stat.ratio ? sorted[sorted.length-1].cls.id : null;
   }
-  stats.sort(function(a,b){ return a.stat.ratio-b.stat.ratio; });
+  stats.sort(function(a,b){ return naturalClassCompare(a.cls.name, b.cls.name); });
 
   var html = '<h1 style="margin:6px 0 4px;">반별 진도 현황</h1>';
   html += '<button class="btn ghost small" id="weeklyReportBtn" style="margin-bottom:14px;">지난주 진도 요약 보기</button>';
@@ -2789,25 +2806,27 @@ function renderExam(){
       html += '<p class="small-note">등록된 시험이 없어요. 설정 &gt; 학사일정에서 모의고사·지필평가·수행평가·학교행사를 추가해보세요.</p>';
     }
     ['writtenExam','mock','performance','event'].forEach(function(type){
+      // list 자체는 시간순으로 둬야 한다 (지필평가 진도 목표 계산이 '바로 이전 시험'을 순서대로 찾기 때문).
+      // 화면에 보여주는 순서만 오늘과 가까운 순으로 따로 정렬한다.
       var list = state.settings.exams.filter(function(e){ return e.type===type; })
         .slice().sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
       if(!list.length) return;
       html += '<h3 style="margin:14px 0 8px;font-size:0.9375rem;color:var(--ink-soft);">'+EXAM_TYPES[type]+'</h3>';
-      list.forEach(function(ex, exIdx){
+      var cards = list.map(function(ex, exIdx){
         var diff = Math.ceil((parseDate(ex.startDate)-parseDate(today))/86400000);
         var ddayText = diff===0?'D-DAY':(diff>0?('D-'+diff):('D+'+(-diff)));
         var dateLabel = ex.startDate===ex.endDate
           ? (niceDate(ex.startDate)+' ('+dayKorOf(ex.startDate)+')')
           : (niceDate(ex.startDate)+' ~ '+niceDate(ex.endDate));
-        html += '<div class="exam-card"><div class="exam-top"><span class="exam-name">'+escapeHtml(ex.name)+'</span><span class="dday">'+ddayText+'</span></div>';
-        html += '<div class="exam-date">'+dateLabel+'</div>';
+        var cardHtml = '<div class="exam-card"><div class="exam-top"><span class="exam-name">'+escapeHtml(ex.name)+'</span><span class="dday">'+ddayText+'</span></div>';
+        cardHtml += '<div class="exam-date">'+dateLabel+'</div>';
         if(type==='writtenExam'){
           var prevExam = list[exIdx-1] || null;
           var startOrder = (prevExam && prevExam.examTargetOrder) ? prevExam.examTargetOrder : 0;
           // 수업 횟수도 진도 목표와 같은 기준으로 세야 한다: 이전 지필평가가 있으면 그 시험이 끝난 날 이후부터,
           // 이번 시험 날짜까지의 수업만 "이번 시험 범위를 위한 수업"으로 센다. (오늘이 이전 시험보다 늦으면 오늘부터)
           var sessionsFrom = prevExam && prevExam.endDate > today ? prevExam.endDate : today;
-          state.settings.classes.forEach(function(c){
+          state.settings.classes.slice().sort(function(a,b){ return naturalClassCompare(a.name,b.name); }).forEach(function(c){
             var planItems = state.plans[c.id] || [];
             var st = examTargetStats(c.id, ex, startOrder);
             var remain = st.remain;
@@ -2823,20 +2842,22 @@ function renderExam(){
               else if(pace<=1.8){ tag='1회당 '+pace.toFixed(1)+'개씩'; tagClass='tight'; }
               else { tag='1회당 '+pace.toFixed(1)+'개씩 (빠듯)'; tagClass='danger'; }
             }
-            html += '<div class="pace-row"><span class="cname" style="color:'+darken(c.color,0.45)+'">'+escapeHtml(c.name)+
+            cardHtml += '<div class="pace-row"><span class="cname" style="color:'+darken(c.color,0.45)+'">'+escapeHtml(c.name)+
               (st.rangeLabel?' <span style="font-size:0.6875rem;color:var(--ink-faint);font-weight:400;">('+st.rangeLabel+')</span>':'')+'</span>'+
               '<span><span class="pace-num-sub">남은 </span><span class="pace-num">'+Math.max(remain,0)+'개</span><span class="pace-num-sub"> · 수업 </span><span class="pace-num">'+sessions+'회</span></span>'+
               '<span class="pace-tag '+tagClass+'">'+tag+'</span></div>';
           });
         }
-        html += '</div>';
+        cardHtml += '</div>';
+        return { html: cardHtml, startDate: ex.startDate };
       });
+      sortByProximityToToday(cards, function(x){ return x.startDate; }, today).forEach(function(cd){ html += cd.html; });
     });
   }
 
   if(showManual){
     html += '<h3 style="margin:14px 0 8px;font-size:0.9375rem;color:var(--ink-soft);">수동 목표일</h3>';
-    state.settings.customDdays.slice().sort(function(a,b){ return a.date<b.date?-1:1; }).forEach(function(dd){
+    sortByProximityToToday(state.settings.customDdays, function(dd){ return dd.date; }, today).forEach(function(dd){
       var diff = Math.ceil((parseDate(dd.date)-parseDate(today))/86400000);
       var ddayText = diff===0?'D-DAY':(diff>0?('D-'+diff):('D+'+(-diff)));
       html += '<div class="exam-card"><div class="exam-top"><span class="exam-name">'+escapeHtml(dd.name)+'</span><span class="dday">'+ddayText+'</span></div>'+
