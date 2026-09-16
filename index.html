@@ -434,12 +434,15 @@
   .undo-toast .undo-btn{color:var(--coral); font-weight:600; text-decoration:underline; cursor:pointer; white-space:nowrap;}
 
   .stamp{
-    padding:3px 9px;
+    display:inline-flex;align-items:center;
+    height:22px;box-sizing:border-box;
+    padding:0 9px;
     border-radius:6px;
     border:1px solid var(--line);
     color:var(--ink-soft);
     font-weight:600;
     font-size:0.7188rem;
+    line-height:1;
     letter-spacing:0.2px;
     background: var(--bg-soft);
     margin-left:auto;
@@ -524,7 +527,10 @@
   .class-card .class-card-body{flex:1; min-width:0;}
   .class-card .row1{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
   .class-card .badge{
-    font-size:0.6875rem;font-weight:600;padding:3px 9px;border-radius:6px;
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:84px;height:24px;box-sizing:border-box;
+    font-size:0.6875rem;font-weight:600;line-height:1;
+    padding:0 10px;border-radius:6px;text-align:center;white-space:nowrap;
   }
   .badge.slow{background:var(--coral-bg);color:var(--coral-deep);}
   .badge.fast{background:var(--gray-100);color:var(--gray-700);}
@@ -567,7 +573,12 @@
   .pace-row .cname{font-weight:600;}
   .pace-row .pace-num{font-weight:800;font-size:0.9375rem;color:var(--ink);}
   .pace-row .pace-num-sub{color:var(--ink-faint);font-weight:500;font-size:0.75rem;}
-  .pace-tag{font-size:0.7188rem;font-weight:600;padding:2px 8px;border-radius:10px;}
+  .pace-tag{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:66px;height:23px;box-sizing:border-box;
+    font-size:0.7188rem;font-weight:600;line-height:1;
+    padding:0 8px;border-radius:10px;text-align:center;white-space:nowrap;
+  }
   .pace-tag.ok{background:var(--card);color:var(--gray-700);border:1px solid var(--gray-400);}
   .pace-tag.tight{background:var(--gray-400);color:#fff;}
   .pace-tag.danger{background:var(--coral-deep);color:#fff;}
@@ -615,7 +626,7 @@
   }
   .neis-classify-btn.active{background:var(--coral-bg);color:var(--coral-deep);border-color:var(--coral);}
   .plan-item-row.done{opacity:.55;}
-  .plan-item-row.done .grow{text-decoration:line-through;}
+  .plan-item-row.done .grow{text-decoration:line-through;text-decoration-color:var(--ink-faint);color:var(--ink-soft);}
 
   .tab-pills{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;}
 
@@ -2905,6 +2916,9 @@ function renderSettingsLanding(el){
     ]},
     { label:'데이터', items:[
       ['data','데이터 관리','백업 · 복원 · 내보내기']
+    ]},
+    { label:'도움말', items:[
+      ['guide','앱 사용 가이드','진도수첩 소개 슬라이드 다시 보기']
     ]}
   ];
   var html = '<h1 style="margin:6px 0 16px;">설정</h1>';
@@ -2919,7 +2933,12 @@ function renderSettingsLanding(el){
   });
   el.innerHTML = html;
   el.querySelectorAll('.settings-menu-row').forEach(function(row){
-    row.addEventListener('click', function(){ state.settingsTab = row.getAttribute('data-tab'); renderSettings(); });
+    row.addEventListener('click', function(){
+      var tab = row.getAttribute('data-tab');
+      if(tab==='guide'){ openAppGuide(); return; }
+      state.settingsTab = tab;
+      renderSettings();
+    });
   });
 }
 
@@ -2938,6 +2957,216 @@ function renderDrillMenu(container, items, onSelect){
   });
 }
 
+// ---------- 컴시간 알리미 엑셀 시간표 불러오기 ----------
+// 학교/버전마다 내보내기 형식이 조금씩 달라서, 두 가지 흔한 형태를 순서대로 시도한다.
+// 1) 행 기반 표: 교사/요일/교시/과목/반 같은 열이 있는 목록형 시트 (전체 교사 시간표에서 흔함)
+// 2) 격자형 표: 월화수목금 열 + 교시 행으로 된 그리드형 시트 (개인 주간시간표에서 흔함)
+function parseGamsiganWorkbook(wb){
+  var allEntries = [];
+  var teacherSet = {};
+  wb.SheetNames.forEach(function(sheetName){
+    var sheet = wb.Sheets[sheetName];
+    var rows;
+    try{ rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:false}); }catch(e){ return; }
+    if(!rows || !rows.length) return;
+
+    var headerRowIdx = -1, colIdx = {};
+    for(var r=0; r<Math.min(rows.length, 10); r++){
+      var row = rows[r] || [];
+      var teacherCol=-1, dayCol=-1, periodCol=-1, subjectCol=-1, classCol=-1;
+      row.forEach(function(cell, c){
+        var v = String(cell||'').trim();
+        if((v==='교사'||v==='성명'||v==='교사명') && teacherCol===-1) teacherCol=c;
+        if(v==='요일' && dayCol===-1) dayCol=c;
+        if(v==='교시' && periodCol===-1) periodCol=c;
+        if((v==='과목'||v==='과목명') && subjectCol===-1) subjectCol=c;
+        if((v==='반'||v==='학급') && classCol===-1) classCol=c;
+      });
+      if(dayCol!==-1 && periodCol!==-1){
+        headerRowIdx = r;
+        colIdx = { teacher:teacherCol, day:dayCol, period:periodCol, subject:subjectCol, cls:classCol };
+        break;
+      }
+    }
+    if(headerRowIdx!==-1){
+      for(var r2=headerRowIdx+1; r2<rows.length; r2++){
+        var row2 = rows[r2];
+        if(!row2 || !row2.length) continue;
+        var dayVal = String(row2[colIdx.day]||'').trim().replace('요일','');
+        var periodVal = parseInt(String(row2[colIdx.period]||'').replace(/[^0-9]/g,''),10);
+        if(DAYS.indexOf(dayVal)===-1 || !periodVal) continue;
+        var teacherVal = colIdx.teacher!==-1 ? String(row2[colIdx.teacher]||'').trim() : '';
+        var subjectVal = colIdx.subject!==-1 ? String(row2[colIdx.subject]||'').trim() : '';
+        var classVal = colIdx.cls!==-1 ? String(row2[colIdx.cls]||'').trim() : '';
+        var label = (classVal || subjectVal || '수업').trim();
+        if(subjectVal && classVal) label = classVal+' '+subjectVal;
+        if(teacherVal) teacherSet[teacherVal] = true;
+        allEntries.push({ teacher:teacherVal, day:dayVal, period:periodVal, label:label });
+      }
+      return;
+    }
+
+    var dayHeaderRow = -1, dayColMap = {};
+    for(var r3=0; r3<Math.min(rows.length, 10); r3++){
+      var row3 = rows[r3] || [];
+      var found = 0, map3 = {};
+      row3.forEach(function(cell, c){
+        var v = String(cell||'').trim().replace('요일','');
+        if(DAYS.indexOf(v)!==-1){ map3[c]=v; found++; }
+      });
+      if(found>=3){ dayHeaderRow = r3; dayColMap = map3; break; }
+    }
+    if(dayHeaderRow===-1) return;
+    for(var r4=dayHeaderRow+1; r4<rows.length; r4++){
+      var row4 = rows[r4];
+      if(!row4 || !row4.length) continue;
+      var periodMatch = String(row4[0]||'').match(/\d+/);
+      if(!periodMatch) continue;
+      var period4 = parseInt(periodMatch[0],10);
+      Object.keys(dayColMap).forEach(function(cKey){
+        var c = parseInt(cKey,10);
+        var raw = String(row4[c]||'').trim();
+        if(!raw) return;
+        allEntries.push({ teacher:'', day:dayColMap[c], period:period4, label:raw.replace(/\n/g,' ').trim() });
+      });
+    }
+  });
+  return { entries: allEntries, teachers: Object.keys(teacherSet) };
+}
+
+function openGamsiganUploadFlow(){
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.xlsx,.xls';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', function(){
+    var file = input.files[0];
+    input.remove();
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var data = new Uint8Array(e.target.result);
+        var wb = XLSX.read(data, {type:'array'});
+        var parsed = parseGamsiganWorkbook(wb);
+        if(!parsed.entries.length){
+          alert('시간표 형식을 인식하지 못했어요. 컴시간 알리미에서 내보낸 "교사별 시간표" 엑셀 파일이 맞는지 확인해주세요.');
+          return;
+        }
+        if(parsed.teachers.length>1){
+          openTeacherSelectModal(parsed.teachers, function(teacherName){
+            var filtered = parsed.entries.filter(function(en){ return en.teacher===teacherName; });
+            openGamsiganPreviewModal(filtered);
+          });
+        } else {
+          openGamsiganPreviewModal(parsed.entries);
+        }
+      }catch(err){
+        console.error(err);
+        alert('파일을 읽는 중 문제가 생겼어요. 엑셀 파일(.xlsx/.xls)이 맞는지 확인해주세요.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+  input.click();
+}
+
+function openTeacherSelectModal(teachers, onPick){
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  var opts = teachers.map(function(t){ return '<option value="'+escapeHtml(t)+'">'+escapeHtml(t)+'</option>'; }).join('');
+  overlay.innerHTML = '<div class="modal-box">'+
+    '<h3>선생님의 이름을 선택해주세요</h3>'+
+    '<p class="small-note" style="margin:0 0 12px;">전체 교사 시간표 파일이라, 선생님 이름에 해당하는 시간표만 가져올게요.</p>'+
+    '<div class="field-row"><select id="teacherSelectInput">'+opts+'</select></div>'+
+    '<div class="modal-actions"><button class="btn ghost small" id="teacherSelectCancel">취소</button><button class="btn small" id="teacherSelectOk">다음</button></div>'+
+  '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#teacherSelectCancel').addEventListener('click', function(){ overlay.remove(); });
+  overlay.querySelector('#teacherSelectOk').addEventListener('click', function(){
+    var val = document.getElementById('teacherSelectInput').value;
+    overlay.remove();
+    onPick(val);
+  });
+}
+
+function openGamsiganPreviewModal(entries){
+  var labelMap = {};
+  entries.forEach(function(en){
+    if(!labelMap[en.label]) labelMap[en.label] = { label:en.label, count:0 };
+    labelMap[en.label].count++;
+  });
+  var labels = Object.keys(labelMap).map(function(k){ return labelMap[k]; });
+  labels.sort(function(a,b){ return b.count-a.count; });
+
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  var rows = labels.map(function(l){
+    return '<div class="add-row" style="margin-bottom:6px;align-items:center;">'+
+      '<label class="check on" style="flex-shrink:0;padding:7px 8px;"><input type="checkbox" class="gs-label-chk" data-label="'+escapeHtml(l.label)+'" checked><span class="mark"></span></label>'+
+      '<input type="text" class="gs-label-name" data-orig="'+escapeHtml(l.label)+'" value="'+escapeHtml(l.label)+'" style="flex:1;">'+
+      '<span class="small-note" style="flex-shrink:0;">'+l.count+'회</span>'+
+    '</div>';
+  }).join('');
+  overlay.innerHTML = '<div class="modal-box">'+
+    '<h3>시간표 불러오기 확인</h3>'+
+    '<p class="small-note" style="margin:0 0 10px;">엑셀에서 이런 반/과목이 발견됐어요. 반으로 등록할 항목만 체크하고, 필요하면 이름을 반 이름에 맞게 고쳐주세요.</p>'+
+    '<div style="max-height:280px;overflow-y:auto;">'+rows+'</div>'+
+    '<p class="small-note" style="margin:10px 0 0;color:var(--coral-deep);">적용하면 지금 등록된 시간표는 덮어써져요.</p>'+
+    '<div class="modal-actions"><button class="btn ghost small" id="gsCancel">취소</button><button class="btn small" id="gsApply">시간표에 적용</button></div>'+
+  '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelectorAll('.gs-label-chk').forEach(function(chk){
+    chk.addEventListener('change', function(){ chk.closest('.check').classList.toggle('on', chk.checked); });
+  });
+  overlay.querySelector('#gsCancel').addEventListener('click', function(){ overlay.remove(); });
+  overlay.querySelector('#gsApply').addEventListener('click', function(){
+    var included = {};
+    overlay.querySelectorAll('.gs-label-chk').forEach(function(chk){
+      if(chk.checked) included[chk.getAttribute('data-label')] = true;
+    });
+    var nameMap = {};
+    overlay.querySelectorAll('.gs-label-name').forEach(function(inp){
+      nameMap[inp.getAttribute('data-orig')] = inp.value.trim() || inp.getAttribute('data-orig');
+    });
+    applyGamsiganEntries(entries, included, nameMap);
+    overlay.remove();
+  });
+}
+
+function applyGamsiganEntries(entries, included, nameMap){
+  var nameToId = {};
+  state.settings.classes.forEach(function(c){ nameToId[c.name] = c.id; });
+  var maxPeriod = state.settings.periodsPerDay || 7;
+  entries.forEach(function(en){
+    if(!included[en.label]) return;
+    var finalName = nameMap[en.label] || en.label;
+    var classId = nameToId[finalName];
+    if(!classId){
+      classId = uid();
+      var color = CLASS_COLORS[state.settings.classes.length % CLASS_COLORS.length];
+      state.settings.classes.push({ id:classId, name:finalName, color:color, grade:'' });
+      state.plans[classId] = [];
+      nameToId[finalName] = classId;
+    }
+    if(!state.settings.schedule[en.day]) state.settings.schedule[en.day] = [];
+    var arr = state.settings.schedule[en.day];
+    while(arr.length < en.period) arr.push(null);
+    arr[en.period-1] = classId;
+    if(en.period > maxPeriod) maxPeriod = en.period;
+  });
+  state.settings.periodsPerDay = Math.min(10, maxPeriod);
+  Promise.all([saveSettings(), savePlans()]).then(function(){
+    var b = document.getElementById('settingsBody');
+    if(b) renderSettingsTimetable(b);
+    flashSaved();
+    alert('시간표를 불러왔어요. 반 이름·색상은 "반 목록"에서 다시 확인해보세요.');
+  });
+}
+
 function renderSettingsTimetable(body){
   if(!state.scheduleSubTab){
     renderDrillMenu(body, [
@@ -2952,6 +3181,14 @@ function renderSettingsTimetable(body){
       '<div class="smr-sub">특정 날짜 하루만 다른 요일 시간표 적용</div></div><span class="smr-arrow">›</span>';
     extraRow.addEventListener('click', function(){ openDayOverrideModal(); });
     body.appendChild(extraRow);
+
+    var uploadSection = document.createElement('div');
+    uploadSection.innerHTML = '<button class="btn ghost small" id="gsUploadBtn" style="width:100%;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:6px;">'+
+      '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M17 8l-5-5-5 5"></path><path d="M12 3v12"></path></svg>'+
+      '컴시간 엑셀 파일 업로드</button>'+
+      '<p class="small-note" style="margin:0 0 14px;">컴시간 알리미에서 내보낸 시간표 엑셀로 내 시간표를 한 번에 채워요.</p>';
+    body.insertBefore(uploadSection, body.firstChild);
+    document.getElementById('gsUploadBtn').addEventListener('click', openGamsiganUploadFlow);
     return;
   }
   var titles = { classes:'반 목록', periods:'일과 시간', myTimetable:'내 시간표' };
@@ -3736,6 +3973,55 @@ function renderHolidayMergedList(body){
   });
 }
 
+// 다른 반 진도계획을 통째로 말고, 원하는 항목만 골라서 복사해올 수 있게 하는 모달.
+function openCopyPlanModal(fromId, toId, onDone){
+  var srcItems = state.plans[fromId] || [];
+  if(!srcItems.length){ alert('복사할 진도 항목이 없어요.'); return; }
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  var rows = srcItems.map(function(it, i){
+    return '<label class="check copy-item-chk-row on" style="width:100%;box-sizing:border-box;justify-content:flex-start;margin-bottom:2px;">'+
+      '<input type="checkbox" class="copy-item-chk" value="'+it.id+'" checked><span class="mark"></span>'+
+      (i+1)+'. '+escapeHtml(it.title)+(it.targetPage?(' ('+escapeHtml(it.targetPage)+')'):'')+
+    '</label>';
+  }).join('');
+  overlay.innerHTML = '<div class="modal-box">'+
+    '<h3>복사할 항목 선택</h3>'+
+    '<p class="small-note" style="margin:0 0 10px;">체크한 항목만 지금 반 뒤에 이어 붙여요.</p>'+
+    '<div style="margin-bottom:8px;"><span id="copySelectAll" style="font-size:0.75rem;color:var(--coral-deep);text-decoration:underline;cursor:pointer;">전체 선택/해제</span></div>'+
+    '<div style="max-height:280px;overflow-y:auto;">'+rows+'</div>'+
+    '<div class="modal-actions"><button class="btn ghost small" id="copyPlanCancel">취소</button><button class="btn small" id="copyPlanConfirm">선택 복사</button></div>'+
+  '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#copyPlanCancel').addEventListener('click', function(){ overlay.remove(); });
+  overlay.querySelectorAll('.copy-item-chk').forEach(function(chk){
+    chk.addEventListener('change', function(){ chk.closest('.copy-item-chk-row').classList.toggle('on', chk.checked); });
+  });
+  var allOn = true;
+  overlay.querySelector('#copySelectAll').addEventListener('click', function(){
+    allOn = !allOn;
+    overlay.querySelectorAll('.copy-item-chk').forEach(function(chk){
+      chk.checked = allOn;
+      chk.closest('.copy-item-chk-row').classList.toggle('on', allOn);
+    });
+  });
+  overlay.querySelector('#copyPlanConfirm').addEventListener('click', function(){
+    var checkedIds = Array.prototype.slice.call(overlay.querySelectorAll('.copy-item-chk:checked')).map(function(c){ return c.value; });
+    if(!checkedIds.length){ alert('복사할 항목을 하나 이상 선택해주세요.'); return; }
+    var copied = srcItems.filter(function(it){ return checkedIds.indexOf(it.id)!==-1; }).map(function(it){
+      return { id:uid(), title:it.title, targetPage:it.targetPage||'', done:false, status:'pending', doneDate:null, donePage:'' };
+    });
+    if(!state.plans[toId]) state.plans[toId] = [];
+    state.plans[toId] = state.plans[toId].concat(copied);
+    savePlans().then(function(){
+      overlay.remove();
+      flashSaved();
+      onDone();
+    });
+  });
+}
+
 function renderSettingsPlans(body){
   if(state.settings.classes.length===0){
     body.innerHTML = '<p class="small-note">먼저 반을 등록해주세요.</p>';
@@ -3778,14 +4064,7 @@ function renderSettingsPlans(body){
   if(copyBtn){
     copyBtn.addEventListener('click', function(){
       var fromId = document.getElementById('copyFromClass').value;
-      var srcItems = state.plans[fromId] || [];
-      if(!srcItems.length) return;
-      var copied = srcItems.map(function(it){
-        return { id:uid(), title:it.title, targetPage:it.targetPage||'', done:false, status:'pending', doneDate:null, donePage:'' };
-      });
-      if(!state.plans[state.planClassId]) state.plans[state.planClassId] = [];
-      state.plans[state.planClassId] = state.plans[state.planClassId].concat(copied);
-      savePlans().then(function(){ renderSettingsPlans(body); flashSaved(); });
+      openCopyPlanModal(fromId, state.planClassId, function(){ renderSettingsPlans(body); });
     });
   }
   body.querySelectorAll('.del-item').forEach(function(x){
@@ -3867,35 +4146,132 @@ function hideSplash(){
 
 // ---------- 온보딩(첫 설정) 마법사 ----------
 // 반을 하나도 등록하지 않은 완전 새 설치일 때만 자동으로 뜬다. 완료하거나 건너뛰면 다시 안 뜬다.
+// 1~3단계는 앱 소개 슬라이드, 4~7단계가 예전의 반등록/일과시간/마무리 초기 세팅 마법사다.
 var onboardingStep = 1;
-var ONBOARDING_STEPS = 4;
+var ONBOARDING_TOTAL_STEPS = 7;
+var onboardingGuideMode = false; // 설정 > 앱 사용 가이드로 다시 열었을 때는 소개 슬라이드 3장만 보여준다
+
+var ONBOARDING_INTRO = [
+  {
+    title:'로그인 없이 1초 만에 시작!',
+    desc:'모든 데이터는 선생님 기기에 안전하게 저장돼요.<br>다른 기기로 옮길 땐 설정 &gt; 데이터 관리에서<br>파일로 내보내고 불러올 수 있어요.',
+    icon:'<svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="var(--coral-deep)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"></rect><path d="M7 10V7a5 5 0 0 1 10 0v3"></path></svg>'
+  },
+  {
+    title:'여러 과목을 가르치시나요?',
+    desc:'과목 구분 고민 없이 내 주간 시간표에<br>교시별로 들어갈 반을 등록해두면,<br>매 교시 알아서 그 반의 과목과 지난 진도를 보여드려요.',
+    icon:'<svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="var(--coral-deep)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M3 9.5h18"></path><path d="M8 4v3M16 4v3"></path><path d="M7.5 13.5h3v3h-3z"></path></svg>'
+  },
+  {
+    title:'시간표 & 학사일정 1초 세팅',
+    desc:'컴시간 알리미 엑셀 업로드로 시간표를 한 번에 등록하고,<br>나이스 연동으로 시험·방학·공휴일도 자동으로 가져오세요.',
+    icon:'<svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="var(--coral-deep)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"></path></svg>'
+  }
+];
 
 function shouldShowOnboarding(){
   return !!(state.settings && state.settings.onboardingDone === false);
 }
 function finishOnboarding(){
   state.settings.onboardingDone = true;
+  onboardingGuideMode = false;
   saveSettings();
   var ov = document.getElementById('onboardingOverlay');
   if(ov) ov.remove();
 }
-function renderOnboarding(){
-  if(!shouldShowOnboarding()) return;
+// 설정 > 앱 사용 가이드에서 부르는 진입점: 이미 세팅을 마친 사용자에게도 소개 슬라이드 3장만 다시 보여준다.
+function openAppGuide(){
+  onboardingGuideMode = true;
+  onboardingStep = 1;
+  renderOnboarding(true);
+}
+function closeAppGuide(){
+  onboardingGuideMode = false;
   var ov = document.getElementById('onboardingOverlay');
+  if(ov) ov.remove();
+}
+
+// 다음/이전 단계로 넘어갈 때 카드가 살짝 아래에서 위로 떠오르며 바뀌는 모션.
+function animateOnboardingStep(newStep){
+  var ov = document.getElementById('onboardingOverlay');
+  var bodyEl = ov ? ov.querySelector('.onboarding-body') : null;
+  if(!bodyEl){ onboardingStep = newStep; renderOnboarding(true); return; }
+  bodyEl.style.transition = 'opacity .18s ease, transform .18s ease';
+  bodyEl.style.opacity = '0';
+  bodyEl.style.transform = 'translateY(12px)';
+  setTimeout(function(){
+    onboardingStep = newStep;
+    renderOnboarding(true);
+    var newOv = document.getElementById('onboardingOverlay');
+    var newBody = newOv ? newOv.querySelector('.onboarding-body') : null;
+    if(newBody){
+      newBody.style.transition = 'none';
+      newBody.style.opacity = '0';
+      newBody.style.transform = 'translateY(12px)';
+      void newBody.offsetWidth; // 강제 리플로우로 위 상태를 확정시킨 뒤에 트랜지션을 다시 켠다
+      newBody.style.transition = 'opacity .35s ease, transform .35s ease';
+      requestAnimationFrame(function(){
+        newBody.style.opacity = '1';
+        newBody.style.transform = 'translateY(0)';
+      });
+    }
+  }, 160);
+}
+// 온보딩 카드 위에서 좌우로 스와이프하면 지금 보이는 다음/이전 버튼을 그대로 눌러준다
+// (버튼마다 단계별 저장 로직이 다 달라서, 직접 흉내내지 않고 실제 버튼 클릭을 그대로 재사용한다)
+function bindOnboardingSwipe(ov){
+  var startX=0, startY=0, tracking=false;
+  ov.addEventListener('touchstart', function(e){
+    if(e.touches.length!==1) return;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = true;
+  }, {passive:true});
+  ov.addEventListener('touchend', function(e){
+    if(!tracking) return;
+    tracking = false;
+    var endX = e.changedTouches[0].clientX, endY = e.changedTouches[0].clientY;
+    var dx = endX-startX, dy = endY-startY;
+    if(Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)*1.5) return;
+    if(dx < 0){
+      var nextBtn = ov.querySelector('#obNext') || ov.querySelector('#obGotoSchedule');
+      if(nextBtn) nextBtn.click();
+    } else {
+      var backBtn = ov.querySelector('#obBack');
+      if(backBtn) backBtn.click();
+    }
+  }, {passive:true});
+}
+
+function renderOnboarding(force){
+  if(!force && !shouldShowOnboarding()) return;
+  var ov = document.getElementById('onboardingOverlay');
+  var isNew = !ov;
   if(!ov){
     ov = document.createElement('div');
     ov.id = 'onboardingOverlay';
     ov.className = 'onboarding-overlay';
     document.body.appendChild(ov);
   }
+  var totalSteps = onboardingGuideMode ? 3 : ONBOARDING_TOTAL_STEPS;
   var dots = '<div class="onboarding-dots">';
-  for(var i=1;i<=ONBOARDING_STEPS;i++){ dots += '<div class="onboarding-dot'+(i===onboardingStep?' active':'')+'"></div>'; }
+  for(var i=1;i<=totalSteps;i++){ dots += '<div class="onboarding-dot'+(i===onboardingStep?' active':'')+'"></div>'; }
   dots += '</div>';
 
   var backLink = onboardingStep>1 ? '<span class="onboarding-back" id="obBack">← 이전</span>' : '';
   var body, actions;
 
-  if(onboardingStep===1){
+  if(onboardingGuideMode && onboardingStep<=3){
+    var gslide = ONBOARDING_INTRO[onboardingStep-1];
+    body = '<div class="onboarding-body">'+
+      backLink+
+      '<div class="onboarding-icon" style="display:flex;align-items:center;justify-content:center;">'+gslide.icon+'</div>'+
+      '<div class="onboarding-title">'+gslide.title+'</div>'+
+      '<div class="onboarding-desc">'+gslide.desc+'</div>'+
+    '</div>';
+    var isLastGuide = onboardingStep===3;
+    actions = '<div class="onboarding-actions">'+
+      '<button class="btn" id="'+(isLastGuide?'obGuideDone':'obNext')+'" style="width:100%;">'+(isLastGuide?'확인':'다음')+'</button>'+
+    '</div>';
+  } else if(onboardingStep===1){
     body = '<div class="onboarding-body">'+
       '<svg class="onboarding-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M22,54 L42,74 L80,28" fill="none" stroke="var(--coral-deep)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"></path></svg>'+
       '<div class="onboarding-title">진도수첩에 오신 걸 환영해요</div>'+
@@ -3905,7 +4281,19 @@ function renderOnboarding(){
       '<button class="btn" id="obNext" style="width:100%;">시작하기</button>'+
       '<span class="onboarding-skip" id="obSkip">나중에 할게요</span>'+
     '</div>';
-  } else if(onboardingStep===2){
+  } else if(onboardingStep>=2 && onboardingStep<=4){
+    var slide = ONBOARDING_INTRO[onboardingStep-2];
+    body = '<div class="onboarding-body">'+
+      backLink+
+      '<div class="onboarding-icon" style="display:flex;align-items:center;justify-content:center;">'+slide.icon+'</div>'+
+      '<div class="onboarding-title">'+slide.title+'</div>'+
+      '<div class="onboarding-desc">'+slide.desc+'</div>'+
+    '</div>';
+    actions = '<div class="onboarding-actions">'+
+      '<button class="btn" id="obNext" style="width:100%;">다음</button>'+
+      '<span class="onboarding-skip" id="obSkip">나중에 할게요</span>'+
+    '</div>';
+  } else if(onboardingStep===5){
     var chips = state.settings.classes.map(function(c){
       return '<span class="onboarding-class-chip">'+escapeHtml(c.name)+(c.grade?(' · '+escapeHtml(c.grade)):'')+'<span class="x" data-id="'+c.id+'">✕</span></span>';
     }).join('');
@@ -3924,7 +4312,7 @@ function renderOnboarding(){
       '<button class="btn" id="obNext" style="width:100%;">다음</button>'+
       '<span class="onboarding-skip" id="obSkip">나중에 할게요</span>'+
     '</div>';
-  } else if(onboardingStep===3){
+  } else if(onboardingStep===6){
     var lvl = state.settings.schoolLevel||'high';
     body = '<div class="onboarding-body">'+
       backLink+
@@ -3946,7 +4334,7 @@ function renderOnboarding(){
     body = '<div class="onboarding-body">'+
       backLink+
       '<div class="onboarding-title">이제 시간표랑 진도계획만 채우면 끝이에요</div>'+
-      '<div class="onboarding-desc">요일별로 몇 교시에 어떤 반 수업이 있는지, 각 반은 어떤 순서로 진도를 나갈지 설정에서 입력해주세요. 조금 더 자세히 입력하는 부분이라 설정 탭에서 이어서 하시는 걸 추천해요.</div>'+
+      '<div class="onboarding-desc">요일별로 몇 교시에 어떤 반 수업이 있는지, 각 반은 어떤 순서로 진도를 나갈지 설정에서 입력해주세요. 컴시간 엑셀을 올리면 시간표는 한 번에 채워져요.</div>'+
     '</div>';
     actions = '<div class="onboarding-actions">'+
       '<button class="btn" id="obGotoSchedule" style="width:100%;">시간표 설정하러 가기</button>'+
@@ -3957,15 +4345,18 @@ function renderOnboarding(){
 
   ov.innerHTML = dots + body + actions;
   bindOnboardingEvents(ov);
+  if(isNew) bindOnboardingSwipe(ov);
 }
 function bindOnboardingEvents(ov){
   var backBtn = ov.querySelector('#obBack');
-  if(backBtn) backBtn.onclick = function(){ onboardingStep--; renderOnboarding(); };
+  if(backBtn) backBtn.onclick = function(){ animateOnboardingStep(onboardingStep-1); };
   var skipBtn = ov.querySelector('#obSkip');
   if(skipBtn) skipBtn.onclick = function(){ finishOnboarding(); };
+  var guideDoneBtn = ov.querySelector('#obGuideDone');
+  if(guideDoneBtn) guideDoneBtn.onclick = function(){ closeAppGuide(); };
   var nextBtn = ov.querySelector('#obNext');
   if(nextBtn) nextBtn.onclick = function(){
-    if(onboardingStep===3){
+    if(onboardingStep===6){
       var lvlSel = ov.querySelector('#obSchoolLevel');
       var firstInput = ov.querySelector('#obFirstPeriod');
       state.settings.schoolLevel = lvlSel.value;
@@ -3973,8 +4364,7 @@ function bindOnboardingEvents(ov){
       state.settings.firstPeriodStart = firstInput.value || '09:00';
       saveSettings();
     }
-    onboardingStep++;
-    renderOnboarding();
+    animateOnboardingStep(onboardingStep+1);
   };
   var addClassBtn = ov.querySelector('#obAddClass');
   if(addClassBtn) addClassBtn.onclick = function(){
@@ -3987,14 +4377,14 @@ function bindOnboardingEvents(ov){
     state.settings.classes.push({ id:id, name:name, color:color, grade: gradeInput.value.trim() });
     state.plans[id] = [];
     nameInput.value=''; gradeInput.value='';
-    Promise.all([saveSettings(), savePlans()]).then(renderOnboarding);
+    Promise.all([saveSettings(), savePlans()]).then(function(){ renderOnboarding(true); });
   };
   ov.querySelectorAll('.onboarding-class-chip .x').forEach(function(x){
     x.onclick = function(){
       var id = x.getAttribute('data-id');
       state.settings.classes = state.settings.classes.filter(function(c){ return c.id!==id; });
       delete state.plans[id];
-      Promise.all([saveSettings(), savePlans()]).then(renderOnboarding);
+      Promise.all([saveSettings(), savePlans()]).then(function(){ renderOnboarding(true); });
     };
   });
   var gotoSchedule = ov.querySelector('#obGotoSchedule');
