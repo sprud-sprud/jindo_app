@@ -2902,7 +2902,8 @@ function renderSettingsLanding(el){
       ['data','데이터 관리','백업 · 복원 · 내보내기']
     ]},
     { label:'도움말', items:[
-      ['guide','앱 사용 가이드','진도수첩 소개 슬라이드 다시 보기']
+      ['guide','앱 사용 가이드','진도수첩 소개 슬라이드 다시 보기'],
+      ['feedback','버그 제보 및 피드백','불편한 점이나 아이디어를 보내주세요']
     ]}
   ];
   var html = '<h1 style="margin:6px 0 16px;">설정</h1>';
@@ -2911,7 +2912,7 @@ function renderSettingsLanding(el){
     g.items.forEach(function(c){
       html += '<div class="settings-menu-row" data-tab="'+c[0]+'">'+
         '<div class="grow"><div class="smr-title">'+c[1]+'</div><div class="smr-sub">'+c[2]+'</div></div>'+
-        '<span class="smr-arrow">›</span></div>';
+          '<span class="smr-arrow">›</span></div>';
     });
     html += '</div>';
   });
@@ -2920,6 +2921,7 @@ function renderSettingsLanding(el){
     row.addEventListener('click', function(){
       var tab = row.getAttribute('data-tab');
       if(tab==='guide'){ openAppGuide(); return; }
+      if(tab==='feedback'){ window.open('https://forms.gle/dJA31xx3MUq16cPEA', '_blank'); return; }
       state.settingsTab = tab;
       renderSettings();
     });
