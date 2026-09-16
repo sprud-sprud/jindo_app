@@ -371,9 +371,8 @@
   .wr-exam-badge.done{background:var(--coral-bg);color:var(--coral-deep);}
   .wr-exam-badge.pending{background:var(--bg-soft);color:var(--ink-soft);}
   .wr-memo{font-size:0.75rem;color:var(--ink-faint);margin-top:6px;font-style:italic;}
-  .wr-clover{margin-bottom:14px;}
-  .wr-cheer-title{font-size:1.125rem;font-weight:800;color:var(--ink);margin-bottom:10px;}
-  .wr-cheer-text{font-size:0.9375rem;color:var(--ink-soft);line-height:1.6;}
+  .wr-clover{font-size:4.5rem;line-height:1;margin-bottom:18px;}
+  .wr-cheer-text{font-size:1.0625rem;font-weight:700;color:var(--ink);line-height:1.7;text-align:center;}
 
   .quick-add-row{display:flex;gap:8px;margin-top:12px;}
   .quick-add-btn{
@@ -4775,8 +4774,7 @@ function showWeeklyReportModal(markShown){
         '</div>'+
         '<div class="wr-step wr-step2" id="wrStep2">'+
           '<div class="wr-scroll wr-step2-scroll">'+
-            '<div class="wr-clover">'+cloverIconSvg(48)+'</div>'+
-            '<div class="wr-cheer-title">월요일 응원 카드</div>'+
+            '<div class="wr-clover">🍀</div>'+
             '<div class="wr-cheer-text">선생님, 이번 주도 무사히 칼퇴하시고<br>행운 가득한 한 주 되세요!</div>'+
           '</div>'+
           '<div class="modal-actions wr-actions"><button class="btn" id="wrDoneBtn" style="width:100%;">이번 주도 화이팅!</button></div>'+
@@ -4794,15 +4792,6 @@ function showWeeklyReportModal(markShown){
       saveSettings();
     }
   });
-}
-function cloverIconSvg(size){
-  return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="var(--coral-deep)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+
-    '<path d="M12 12c0-2.5-2-4.5-4.5-4.5S3 9.5 3 12s2 4.5 4.5 4.5S12 14.5 12 12z"></path>'+
-    '<path d="M12 12c0-2.5 2-4.5 4.5-4.5S21 9.5 21 12s-2 4.5-4.5 4.5S12 14.5 12 12z"></path>'+
-    '<path d="M12 12c-2.5 0-4.5-2-4.5-4.5S9.5 3 12 3s4.5 2 4.5 4.5S14.5 12 12 12z"></path>'+
-    '<path d="M12 12c-2.5 0-4.5 2-4.5 4.5S9.5 21 12 21s4.5-2 4.5-4.5S14.5 12 12 12z"></path>'+
-    '<path d="M12 12v9" stroke-width="1.4"></path>'+
-  '</svg>';
 }
 function maybeShowWeeklyReport(){
   if(!state.settings.onboardingDone) return; // 아직 온보딩 중인 신규 사용자는 건너뜀
