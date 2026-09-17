@@ -13,7 +13,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>진도수첩</title>
-<meta name="theme-color" content="#B84F39">
+<meta name="theme-color" content="#F2F4F6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="진도수첩">
@@ -23,8 +23,8 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 <style>
   :root{
-    --bg:#FAFAF9;
-    --bg-soft:#EFEFED;
+    --bg:#FFFFFF;
+    --bg-soft:#F2F4F6;
     --card:#FFFFFF;
     --ink:#22252A;
     --ink-soft:#75726C;
@@ -33,9 +33,9 @@
     --sage:#7E9A74;
     --sage-deep:#48603F;
     --sage-bg:#E6EDE2;
-    --coral:#E06D53;
-    --coral-deep:#B84F39;
-    --coral-bg:#FBE7E1;
+    --coral:#FF7A54;
+    --coral-deep:#FF5E36;
+    --coral-bg:#FFE9E2;
     --lav:#8D82A8;
     --lav-deep:#54486F;
     --lav-bg:#E7E3EF;
@@ -49,9 +49,9 @@
     --gray-100:#EBEBEB;
     --gray-400:#808080;
     --gray-700:#464646;
-    --shadow: 0 2px 14px rgba(34,37,42,0.07);
-    --shadow-soft: 0 1px 3px rgba(34,37,42,0.05);
-    --radius: 16px;
+    --shadow: 0 4px 20px rgba(34,37,42,0.09);
+    --shadow-soft: 0 2px 10px rgba(34,37,42,0.06);
+    --radius: 18px;
   }
   :root[data-theme="dark"]{
     --bg:#17171C;
@@ -64,9 +64,9 @@
     --sage:#7E9A74;
     --sage-deep:#9BC78F;
     --sage-bg:#1E2B22;
-    --coral:#E0836D;
-    --coral-deep:#D2604A;
-    --coral-bg:#3A2A26;
+    --coral:#FF9270;
+    --coral-deep:#FF6B45;
+    --coral-bg:#3D291F;
     --rose-deep:#D89A94;
     --stamp:#9BC78F;
     --holiday-bg:#3A2420;
@@ -76,6 +76,12 @@
     --shadow: 0 2px 14px rgba(0,0,0,0.4);
     --shadow-soft: 0 1px 3px rgba(0,0,0,0.3);
   }
+  /* 위 week-cell은 요청에 따라 특정 헥스 색을 직접 썼는데, 다크 모드에서는 그대로 두면 밝은 회색 칩이 튀어 보여서 따로 다시 입혀준다 */
+  :root[data-theme="dark"] .week-title{color:var(--ink);}
+  :root[data-theme="dark"] .week-cell{background:var(--bg-soft);}
+  :root[data-theme="dark"] .week-cell .wc-dow{color:var(--ink-faint);}
+  :root[data-theme="dark"] .week-cell .wc-num{color:var(--ink);}
+  :root[data-theme="dark"] #openMonthSheetBtn{color:var(--ink-soft) !important;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;overscroll-behavior:none;}
   body{
@@ -87,6 +93,7 @@
     transition:background .2s ease, color .2s ease;
   }
   h1,h2,h3{ font-family:'Pretendard', sans-serif; font-weight:700; letter-spacing:-0.3px; }
+  h1{ font-size:1.5rem; font-weight:800; letter-spacing:-0.4px; }
   #app{
     max-width:520px;
     margin:0 auto;
@@ -130,11 +137,11 @@
   .empty-state p{font-size:0.875rem;line-height:1.6;margin:0 0 18px;}
   button.btn{
     font-family:'Pretendard',sans-serif;
-    font-weight:600;
-    font-size:0.8438rem;
+    font-weight:700;
+    font-size:0.875rem;
     border:none;
-    border-radius:11px;
-    padding:11px 16px;
+    border-radius:14px;
+    padding:14px 18px;
     cursor:pointer;
     background:var(--coral-deep);
     color:#fff;
@@ -168,19 +175,19 @@
   .week-header-top{
     display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;
   }
-  .week-title{font-size:1.3125rem;font-weight:800;color:var(--ink);}
+  .week-title{font-size:1.625rem;font-weight:800;color:#191F28;letter-spacing:-0.4px;}
   .week-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
   .week-cell{
     display:flex;flex-direction:column;align-items:center;gap:3px;
-    padding:9px 2px 8px;border-radius:12px;cursor:pointer;position:relative;
-    background:var(--card);box-shadow:var(--shadow-soft);
+    padding:10px 2px 9px;border-radius:12px;cursor:pointer;position:relative;
+    background:#F2F4F6;
   }
-  .week-cell .wc-dow{font-size:0.6875rem;color:var(--ink-faint);font-weight:600;}
-  .week-cell .wc-num{font-size:1.0625rem;font-weight:700;color:var(--ink);}
+  .week-cell .wc-dow{font-size:0.6875rem;color:#6B7684;font-weight:600;}
+  .week-cell .wc-num{font-size:1.0625rem;font-weight:600;color:#191F28;}
   .week-cell .wc-dot{width:4px;height:4px;border-radius:50%;background:var(--coral-deep);position:absolute;bottom:5px;}
   .week-cell.is-today .wc-dow{color:var(--coral-deep);}
   .week-cell.selected{background:var(--coral-deep);}
-  .week-cell.selected .wc-dow{color:rgba(255,255,255,0.65);}
+  .week-cell.selected .wc-dow{color:#fff;}
   .week-cell.selected .wc-num{color:#fff;}
   .week-cell.selected .wc-dot{background:#fff;}
 
@@ -195,8 +202,8 @@
     background:var(--card);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
-    padding:16px 16px 14px;
-    margin-bottom:14px;
+    padding:18px 18px 16px;
+    margin-bottom:16px;
     overflow:visible;
   }
   .card .card-head{
@@ -283,12 +290,12 @@
   .status-btn{
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
     font-size:0.6875rem;font-weight:600;text-align:center;
-    padding:8px 2px;border-radius:7px;
-    border:1px solid var(--line);background:var(--bg-soft);
+    padding:9px 2px;border-radius:9px;
+    border:none;background:var(--bg-soft);
     color:var(--ink-soft);cursor:pointer;
   }
   .status-btn .status-ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .status-btn.on{background:var(--coral-bg);border-color:var(--coral);color:var(--coral-deep);}
+  .status-btn.on{background:var(--coral-deep);color:#fff;}
 
   .prev-progress{
     font-size:0.75rem;color:var(--ink-soft);background:var(--bg-soft);
@@ -296,17 +303,32 @@
   }
   .prev-progress b{color:var(--ink);font-weight:600;}
 
-  .prev-hero{background:var(--bg-soft);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
-  .prev-hero-label{font-size:0.6875rem;font-weight:700;color:var(--ink-faint);letter-spacing:.03em;margin-bottom:6px;text-transform:uppercase;}
+  .prev-hero{background:rgba(255,94,54,0.055);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+  .prev-hero-label{font-size:0.6875rem;font-weight:700;color:var(--ink-soft);letter-spacing:.03em;margin-bottom:6px;text-transform:uppercase;}
   .prev-hero-value{font-size:1.125rem;font-weight:800;color:var(--ink);line-height:1.35;word-break:keep-all;}
   .prev-hero-meta{font-size:0.75rem;color:var(--ink-soft);margin-top:6px;display:flex;align-items:center;gap:4px;}
   .prev-hero.empty .prev-hero-value{font-size:0.9375rem;font-weight:600;color:var(--ink-soft);}
 
   .now-focus-badge{
-    display:inline-flex;align-items:center;gap:4px;font-size:0.6875rem;font-weight:700;
-    color:var(--coral-deep);background:var(--coral-bg);border-radius:20px;padding:3px 9px;margin-bottom:8px;
+    display:inline-flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:700;
+    color:var(--coral-deep);margin-bottom:10px;
   }
-  .card.is-focus{border:1.5px solid var(--coral);box-shadow:0 2px 10px rgba(0,0,0,0.05);}
+  .now-focus-dot{
+    width:7px;height:7px;border-radius:50%;background:var(--coral-deep);flex-shrink:0;
+    box-shadow:0 0 0 0 rgba(255,94,54,0.55);
+    animation:focusPulse 1.6s ease-out infinite;
+  }
+  @keyframes focusPulse{
+    0%{box-shadow:0 0 0 0 rgba(255,94,54,0.5);}
+    70%{box-shadow:0 0 0 7px rgba(255,94,54,0);}
+    100%{box-shadow:0 0 0 0 rgba(255,94,54,0);}
+  }
+  .card.is-focus{
+    box-shadow:var(--shadow);
+    border-left:5px solid var(--coral-deep);
+    border-radius:6px var(--radius) var(--radius) 6px;
+    padding-left:13px;
+  }
 
   .card-folded{
     display:flex;align-items:center;gap:8px;background:var(--bg-soft);
@@ -612,7 +634,7 @@
   /* D-day */
   .exam-card{
     background:var(--card);border-radius:var(--radius);
-    border:1px solid var(--line);
+    box-shadow:var(--shadow-soft);
     padding:16px;margin-bottom:14px;
   }
   .exam-card .exam-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
@@ -626,7 +648,7 @@
   .exam-card .dday{font-family:'Pretendard',sans-serif;font-size:1.5rem;font-weight:800;color:var(--coral-deep);letter-spacing:-0.5px;}
   .exam-card .exam-date{font-size:0.75rem;color:var(--ink-soft);margin-bottom:10px;}
   .pace-row{
-    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    background:var(--bg-soft);border-radius:12px;
     padding:10px 12px;margin-bottom:8px;font-size:0.8125rem;
   }
   .pace-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;gap:8px;}
@@ -634,7 +656,7 @@
   .pace-row-bottom{display:flex;align-items:center;gap:9px;}
   .pace-nums{white-space:nowrap;font-size:0.75rem;color:var(--ink-faint);}
   .pace-nums b{color:var(--ink);font-weight:700;}
-  .pace-gauge-bg{flex:1;height:4px;border-radius:2px;background:var(--bg-soft);overflow:hidden;}
+  .pace-gauge-bg{flex:1;height:4px;border-radius:2px;background:var(--card);overflow:hidden;}
   .pace-gauge-fill{height:100%;border-radius:2px;transition:width .3s ease;}
   .pace-gauge-fill.ok{background:#3FA95C;}
   .pace-gauge-fill.tight{background:#E0972B;}
@@ -1921,7 +1943,7 @@ function renderToday(){
   if(!isToday) html += '<button class="today-bar-btn" id="jumpTodayTop">오늘로 돌아가기</button>';
   html += '<div class="week-header">';
   html += '<div class="week-header-top"><div class="week-title">'+niceDate(d)+' '+weekdayLabel+'</div>'+
-    '<button class="icon-btn" id="openMonthSheetBtn"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 9.5h16"></path><path d="M8 3v3.5M16 3v3.5"></path></svg></button></div>';
+    '<button class="icon-btn" id="openMonthSheetBtn" style="color:#4E5968;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 9.5h16"></path><path d="M8 3v3.5M16 3v3.5"></path></svg></button></div>';
   html += buildWeekStripHtml(d);
   html += '</div>';
 
@@ -2159,7 +2181,7 @@ function renderDayCard(dateStr, period, classId, isFocus, isMakeup){
   // 메인 항목과 상태가 섞이지 않도록, 추가 항목은 각자 자기 상태를 따로 갖는다.
   var extraParts = buildExtraSectionHtml(classId, mainItemId, extraItems);
   var hasExtra = extraItems.length>0;
-  var focusBadge = isFocus ? '<div class="now-focus-badge">'+statusIconSvg('inProgress',12)+' 지금 이 시간</div>' : '';
+  var focusBadge = isFocus ? '<div class="now-focus-badge"><span class="now-focus-dot"></span>지금 이 시간</div>' : '';
   var uidSuffix = period+'-'+classId;
   var extraWrapId = 'extraWrap-'+uidSuffix, memoWrapId = 'memoWrap-'+uidSuffix, excuseWrapId = 'excuseWrap-'+uidSuffix;
 
@@ -4541,8 +4563,8 @@ window.__gotoView = switchView;
 // ---------- 신규 기능 스포트라이트 코치마크 ----------
 // 업데이트 후 전체 유저에게 딱 한 번, 오늘 탭의 달력 아이콘 → 반별현황 탭의 리포트 아이콘 순서로 안내한다.
 var COACHMARK_STEPS = {
-  1: { targetId:'openMonthSheetBtn', text:'궁금한 날짜를 터치해서 그날의 학사일정과 수업을 바로 확인해보세요!', nextLabel:'다음' },
-  2: { targetId:'weeklyReportBtn', text:'지난주 반별 진도 현황을 요약 리포트로 한눈에 모아보세요!', nextLabel:'확인' }
+  1: { targetId:'openMonthSheetBtn', view:'today', text:'궁금한 날짜를 터치해서 그날의 학사일정과 수업을 바로 확인해보세요!', nextLabel:'다음' },
+  2: { targetId:'weeklyReportBtn', view:'classes', text:'지난주 반별 진도 현황을 요약 리포트로 한눈에 모아보세요!', nextLabel:'확인' }
 };
 var coachmarkActiveStep = 0;
 function maybeShowCoachmark(step){
@@ -4566,6 +4588,9 @@ function closeCoachmark(){
 function showCoachmarkStep(step){
   if(state.settings.isNewFeatureTutorialSeen) return;
   var cfg = COACHMARK_STEPS[step];
+  // 지금 보고 있는 탭이 이 단계가 가리키려는 탭이 아니면(예: 온보딩 끝내고 설정으로 바로 넘어간 경우),
+  // 엉뚱한 화면에 떠버릴 수 있으니 아예 띄우지 않고 조용히 닫는다.
+  if(state.currentView !== cfg.view){ closeCoachmark(); return; }
   var target = document.getElementById(cfg.targetId);
   if(!target){ closeCoachmark(); return; } // 아이콘이 화면에 없으면(반이 없어서 리포트 아이콘이 안 뜨는 경우 등) 조용히 닫는다
   coachmarkActiveStep = step;
