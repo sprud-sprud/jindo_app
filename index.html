@@ -377,7 +377,7 @@
   .quick-add-row{display:flex;gap:8px;margin-top:12px;}
   .quick-add-btn{
     flex:1;text-align:center;font-size:0.75rem;font-weight:600;color:var(--ink-soft);
-    background:var(--bg-soft);border-radius:8px;padding:9px 10px;cursor:pointer;
+    background:none;border:1px solid var(--line);border-radius:20px;padding:8px 10px;cursor:pointer;
   }
   .quick-add-btn.ghost-text{
     flex:none;width:100%;background:none;color:var(--ink-faint);font-weight:500;
@@ -612,31 +612,59 @@
   /* D-day */
   .exam-card{
     background:var(--card);border-radius:var(--radius);
-    box-shadow:var(--shadow-soft);
+    border:1px solid var(--line);
     padding:16px;margin-bottom:14px;
   }
   .exam-card .exam-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
   .exam-card .exam-name{font-size:1rem;font-weight:600;}
+  .source-chip{
+    display:inline-block;font-size:0.625rem;font-weight:700;
+    padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle;
+  }
+  .source-chip.academic{background:var(--bg-soft);color:var(--ink-faint);}
+  .source-chip.personal{background:var(--coral-bg);color:var(--coral-deep);}
   .exam-card .dday{font-family:'Pretendard',sans-serif;font-size:1.5rem;font-weight:800;color:var(--coral-deep);letter-spacing:-0.5px;}
   .exam-card .exam-date{font-size:0.75rem;color:var(--ink-soft);margin-bottom:10px;}
   .pace-row{
-    display:flex;justify-content:space-between;align-items:center;
-    padding:9px 10px;background:var(--bg-soft);border-radius:10px;margin-bottom:6px;
-    font-size:0.8125rem;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:10px 12px;margin-bottom:8px;font-size:0.8125rem;
   }
+  .pace-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;gap:8px;}
   .pace-row .cname{font-weight:600;}
-  .pace-row .pace-num{font-weight:800;font-size:0.9375rem;color:var(--ink);}
-  .pace-row .pace-num-sub{color:var(--ink-faint);font-weight:500;font-size:0.75rem;}
+  .pace-row-bottom{display:flex;align-items:center;gap:9px;}
+  .pace-nums{white-space:nowrap;font-size:0.75rem;color:var(--ink-faint);}
+  .pace-nums b{color:var(--ink);font-weight:700;}
+  .pace-gauge-bg{flex:1;height:4px;border-radius:2px;background:var(--bg-soft);overflow:hidden;}
+  .pace-gauge-fill{height:100%;border-radius:2px;transition:width .3s ease;}
+  .pace-gauge-fill.ok{background:#3FA95C;}
+  .pace-gauge-fill.tight{background:#E0972B;}
+  .pace-gauge-fill.danger{background:var(--coral-deep);}
+  .pace-gauge-fill.done{background:var(--coral-deep);}
   .pace-tag{
     display:inline-flex;align-items:center;justify-content:center;
     min-width:66px;height:23px;box-sizing:border-box;
-    font-size:0.7188rem;font-weight:600;line-height:1;
-    padding:0 8px;border-radius:10px;text-align:center;white-space:nowrap;
+    font-size:0.7188rem;font-weight:700;line-height:1;
+    padding:0 8px;border-radius:20px;text-align:center;white-space:nowrap;flex-shrink:0;
   }
-  .pace-tag.ok{background:var(--card);color:var(--gray-700);border:1px solid var(--gray-400);}
-  .pace-tag.tight{background:var(--gray-400);color:#fff;}
-  .pace-tag.danger{background:var(--coral-deep);color:#fff;}
-  .pace-tag.done{background:#1A1A1A;color:#fff;}
+  .pace-tag.ok{background:#E3F3E7;color:#2F8F52;}
+  .pace-tag.tight{background:#FCEEDA;color:#B9720F;}
+  .pace-tag.danger{background:var(--coral-bg);color:var(--coral-deep);}
+  .pace-tag.done{background:var(--coral-deep);color:#fff;}
+  .pace-tag-dot{width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:4px;flex-shrink:0;}
+  .pace-tag-check{margin-right:3px;font-weight:800;}
+
+  .accordion-toggle{
+    display:flex;align-items:center;justify-content:center;gap:5px;
+    width:100%;background:none;border:none;color:var(--ink-faint);
+    font-size:0.75rem;font-weight:600;padding:9px 0 3px;margin-top:2px;cursor:pointer;
+  }
+  .accordion-toggle .chev{display:inline-block;transition:transform .25s ease;font-size:0.6875rem;}
+  .accordion-toggle.open .chev{transform:rotate(180deg);}
+  .accordion-body{
+    overflow:hidden;max-height:0;opacity:0;
+    transition:max-height .32s ease, opacity .32s ease;
+  }
+  .accordion-body.open{max-height:1200px;opacity:1;margin-top:6px;}
 
   /* 설정 */
   .settings-section{
@@ -703,7 +731,7 @@
   .settings-menu-row .smr-sub{font-size:0.75rem;color:var(--ink-soft);}
   .settings-menu-row .smr-arrow{font-size:1.25rem;color:var(--ink-faint);flex-shrink:0;}
   .tab-pill{
-    flex-shrink:0;padding:7px 14px;border-radius:8px;
+    flex-shrink:0;padding:6px 14px;border-radius:20px;
     font-size:0.8125rem;font-weight:600;color:var(--ink-soft);
     background:var(--bg-soft);cursor:pointer;border:1.5px solid transparent;
   }
@@ -885,23 +913,26 @@ var STATUS_META = {
 };
 var EXCUSE_REASONS = ['연가','병가','출장','기타'];
 
-// 진행 단계를 막대 4개(신호 세기 형태)로 표시하는 단순 아이콘. 채워진 막대 수 = 진행 단계.
+// 상태마다 서로 다른, 한눈에 알아볼 수 있는 아이콘을 쓴다 (예정=시계, 진행중=책, 문제풀이=연필, 완료=체크).
 // 색을 직접 정하지 않고 currentColor를 써서, 놓이는 자리(버튼 선택 상태, 일반 텍스트 등)의 색을 그대로 따라간다.
-// 색을 여러 개 쓰지 않고 의미가 있는 곳(완료, 선택됨)에만 코랄을 쓰기 위함.
 function statusIconSvg(status, size){
   size = size || 16;
-  var idx = STATUS_ORDER.indexOf(status);
-  var heights = [6,9.5,13,16.5];
-  var bars = '';
-  for(var i=0;i<4;i++){
-    var h = heights[i];
-    var x = 2 + i*4.3;
-    var y = 18 - h;
-    var filled = i <= idx;
-    bars += '<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="3.1" height="'+h+'" rx="1" '+
-      (filled ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.5"')+'></rect>';
+  var body;
+  if(status==='pending'){
+    body = '<circle cx="10" cy="10.5" r="7.2" fill="none" stroke="currentColor" stroke-width="1.5"></circle>'+
+      '<path d="M10 6.5v4.3l3 1.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>'+
+      '<path d="M7.5 2.8h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>';
+  } else if(status==='inProgress'){
+    body = '<path d="M10 5.3c-1.5-1-3.4-1.3-5.3-1v10.4c1.9-.3 3.8 0 5.3 1M10 5.3c1.5-1 3.4-1.3 5.3-1v10.4c-1.9-.3-3.8 0-5.3 1M10 5.3v10.4" '+
+      'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>';
+  } else if(status==='practicing'){
+    body = '<path d="M13.2 3.3l3.5 3.5L6.2 17.3H2.7v-3.5L13.2 3.3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>'+
+      '<path d="M11.3 5.2l3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>';
+  } else {
+    body = '<circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" stroke-width="1.5"></circle>'+
+      '<path d="M6.6 10.3l2.2 2.2 4.6-4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>';
   }
-  return '<svg viewBox="0 0 20 20" width="'+size+'" height="'+size+'" xmlns="http://www.w3.org/2000/svg">'+bars+'</svg>';
+  return '<svg viewBox="0 0 20 20" width="'+size+'" height="'+size+'" xmlns="http://www.w3.org/2000/svg">'+body+'</svg>';
 }
 
 var LEGAL_HOLIDAYS = [
@@ -2901,108 +2932,136 @@ function triggerConfetti(){
 
 
 // ---------- render: EXAM D-day ----------
+// 개인 D-day 추가: 화면 상단에 폼을 항상 띄워두지 않고, 버튼 눌렀을 때만 모달로 입력받는다.
+function openAddDdayModal(){
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = '<div class="modal-box">'+
+    '<h3>개인 D-day 추가</h3>'+
+    '<div class="field-row"><label>이름 <span class="req">*</span></label><input type="text" id="ddayName" placeholder="예: 3단원 마감, 수행평가 제출 마감"></div>'+
+    '<div class="field-row"><label>날짜 <span class="req">*</span></label><input type="date" id="ddayDate"></div>'+
+    '<div class="modal-actions"><button class="btn ghost small" id="ddayCancel">취소</button><button class="btn small" id="ddaySave">추가</button></div>'+
+  '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#ddayCancel').addEventListener('click', function(){ overlay.remove(); });
+  overlay.querySelector('#ddaySave').addEventListener('click', function(){
+    var name = document.getElementById('ddayName').value.trim();
+    var date = document.getElementById('ddayDate').value;
+    if(!name || !date){ alert('이름과 날짜를 모두 입력해주세요.'); return; }
+    state.settings.customDdays.push({ id:uid(), name:name, date:date });
+    saveSettings().then(function(){
+      overlay.remove();
+      renderExam();
+      flashSaved();
+    });
+  });
+}
+
 function renderExam(){
   var el = document.getElementById('view-exam');
   if(state.settings.classes.length===0){
-    el.innerHTML = emptyStateHtml('⏳','시험 D-day','설정에서 반과 학사일정을 먼저 등록해주세요.','settings');
+    el.innerHTML = emptyStateHtml('⏳','D-day','설정에서 반과 학사일정을 먼저 등록해주세요.','settings');
     return;
   }
-  if(!state.examFilterTab) state.examFilterTab = 'all';
   var today = todayStr();
-  var html = '<h1 style="margin:6px 0 4px;">시험 D-day</h1>';
-  html += '<div class="tab-pills">';
-  [['all','전체'],['auto','자동(학사일정)'],['manual','수동(직접 등록)']].forEach(function(t){
-    html += '<div class="tab-pill'+(state.examFilterTab===t[0]?' active':'')+'" data-filter="'+t[0]+'">'+t[1]+'</div>';
-  });
-  html += '</div>';
+  var html = '<div class="classes-top-row"><h1 style="margin:0;">D-day</h1>'+
+    '<button class="icon-btn" id="addDdayMenuBtn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div>';
 
-  var showAuto = state.examFilterTab==='all' || state.examFilterTab==='auto';
-  var showManual = state.examFilterTab==='all' || state.examFilterTab==='manual';
+  var allCards = [];
 
-  if(showAuto){
-    if(state.settings.exams.length===0){
-      html += '<p class="small-note">등록된 시험이 없어요. 설정 &gt; 학사일정에서 모의고사·지필평가·수행평가·학교행사를 추가해보세요.</p>';
-    }
-    ['writtenExam','mock','performance','event'].forEach(function(type){
-      // list 자체는 시간순으로 둬야 한다 (지필평가 진도 목표 계산이 '바로 이전 시험'을 순서대로 찾기 때문).
-      // 화면에 보여주는 순서만 오늘과 가까운 순으로 따로 정렬한다.
-      var list = state.settings.exams.filter(function(e){ return e.type===type; })
-        .slice().sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
-      if(!list.length) return;
-      html += '<h3 style="margin:14px 0 8px;font-size:0.9375rem;color:var(--ink-soft);">'+EXAM_TYPES[type]+'</h3>';
-      var cards = list.map(function(ex, exIdx){
-        var diff = Math.ceil((parseDate(ex.startDate)-parseDate(today))/86400000);
-        var ddayText = diff===0?'D-DAY':(diff>0?('D-'+diff):('D+'+(-diff)));
-        var dateLabel = ex.startDate===ex.endDate
-          ? (niceDate(ex.startDate)+' ('+dayKorOf(ex.startDate)+')')
-          : (niceDate(ex.startDate)+' ~ '+niceDate(ex.endDate));
-        var cardHtml = '<div class="exam-card"><div class="exam-top"><span class="exam-name">'+escapeHtml(ex.name)+'</span><span class="dday">'+ddayText+'</span></div>';
-        cardHtml += '<div class="exam-date">'+dateLabel+'</div>';
-        if(type==='writtenExam'){
-          var prevExam = list[exIdx-1] || null;
-          var startOrder = (prevExam && prevExam.examTargetOrder) ? prevExam.examTargetOrder : 0;
-          // 수업 횟수도 진도 목표와 같은 기준으로 세야 한다: 이전 지필평가가 있으면 그 시험이 끝난 날 이후부터,
-          // 이번 시험 날짜까지의 수업만 "이번 시험 범위를 위한 수업"으로 센다. (오늘이 이전 시험보다 늦으면 오늘부터)
-          var sessionsFrom = prevExam && prevExam.endDate > today ? prevExam.endDate : today;
-          state.settings.classes.slice().sort(function(a,b){ return naturalClassCompare(a.name,b.name); }).forEach(function(c){
-            var planItems = state.plans[c.id] || [];
-            var st = examTargetStats(c.id, ex, startOrder);
-            var remain = st.remain;
-            var sessions = diff>0 ? countSessions(c.id, sessionsFrom, ex.startDate) : 0;
-            var tag='', tagClass='';
-            if(planItems.length===0){ tag='진도계획 없음'; tagClass='tight'; }
-            else if(remain<=0){ tag='진도 완료'; tagClass='done'; }
-            else if(diff<=0){ tag='시험 지남'; tagClass='danger'; }
-            else if(sessions===0){ tag='남은 수업 없음'; tagClass='danger'; }
-            else {
-              var pace = remain/sessions;
-              if(pace<=1){ tag='여유 있어요'; tagClass='ok'; }
-              else if(pace<=1.8){ tag='1회당 '+pace.toFixed(1)+'개씩'; tagClass='tight'; }
-              else { tag='1회당 '+pace.toFixed(1)+'개씩 (빠듯)'; tagClass='danger'; }
-            }
-            cardHtml += '<div class="pace-row"><span class="cname" style="color:'+darken(c.color,0.45)+'">'+escapeHtml(c.name)+
-              (st.rangeLabel?' <span style="font-size:0.6875rem;color:var(--ink-faint);font-weight:400;">('+st.rangeLabel+')</span>':'')+'</span>'+
-              '<span><span class="pace-num-sub">남은 </span><span class="pace-num">'+Math.max(remain,0)+'개</span><span class="pace-num-sub"> · 수업 </span><span class="pace-num">'+sessions+'회</span></span>'+
-              '<span class="pace-tag '+tagClass+'">'+tag+'</span></div>';
-          });
-        }
-        cardHtml += '</div>';
-        return { html: cardHtml, startDate: ex.startDate };
-      });
-      sortByProximityToToday(cards, function(x){ return x.startDate; }, today).forEach(function(cd){ html += cd.html; });
-    });
+  if(state.settings.exams.length===0 && state.settings.customDdays.length===0){
+    html += '<p class="small-note">등록된 일정이 없어요. 오른쪽 위 + 버튼으로 추가해보세요.</p>';
   }
 
-  if(showManual){
-    html += '<h3 style="margin:14px 0 8px;font-size:0.9375rem;color:var(--ink-soft);">수동 목표일</h3>';
-    sortByProximityToToday(state.settings.customDdays, function(dd){ return dd.date; }, today).forEach(function(dd){
-      var diff = Math.ceil((parseDate(dd.date)-parseDate(today))/86400000);
+  ['writtenExam','mock','performance','event'].forEach(function(type){
+    // list 자체는 시간순으로 둬야 한다 (지필평가 진도 목표 계산이 '바로 이전 시험'을 순서대로 찾기 때문).
+    // 화면에 보여주는 순서만 오늘과 가까운 순으로 전체 목록과 함께 따로 정렬한다.
+    var list = state.settings.exams.filter(function(e){ return e.type===type; })
+      .slice().sort(function(a,b){ return a.startDate<b.startDate?-1:1; });
+    if(!list.length) return;
+    list.forEach(function(ex, exIdx){
+      var diff = Math.ceil((parseDate(ex.startDate)-parseDate(today))/86400000);
       var ddayText = diff===0?'D-DAY':(diff>0?('D-'+diff):('D+'+(-diff)));
-      html += '<div class="exam-card"><div class="exam-top"><span class="exam-name">'+escapeHtml(dd.name)+'</span><span class="dday">'+ddayText+'</span></div>'+
-        '<div class="exam-date">'+niceDate(dd.date)+' ('+dayKorOf(dd.date)+')</div>'+
-        '<div style="text-align:right;"><span class="del-dday" data-id="'+dd.id+'" style="font-size:0.75rem;color:var(--rose-deep);cursor:pointer;text-decoration:underline;">삭제</span></div></div>';
+      var dateLabel = ex.startDate===ex.endDate
+        ? (niceDate(ex.startDate)+' ('+dayKorOf(ex.startDate)+')')
+        : (niceDate(ex.startDate)+' ~ '+niceDate(ex.endDate));
+      var headerHtml = '<div class="exam-top"><span class="exam-name">'+escapeHtml(ex.name)+'<span class="source-chip academic">학사</span></span><span class="dday">'+ddayText+'</span></div>'+
+        '<div class="exam-date">'+dateLabel+'</div>';
+      var subHtml = '';
+      if(type==='writtenExam'){
+        var prevExam = list[exIdx-1] || null;
+        var startOrder = (prevExam && prevExam.examTargetOrder) ? prevExam.examTargetOrder : 0;
+        // 수업 횟수도 진도 목표와 같은 기준으로 세야 한다: 이전 지필평가가 있으면 그 시험이 끝난 날 이후부터,
+        // 이번 시험 날짜까지의 수업만 "이번 시험 범위를 위한 수업"으로 센다. (오늘이 이전 시험보다 늦으면 오늘부터)
+        var sessionsFrom = prevExam && prevExam.endDate > today ? prevExam.endDate : today;
+        state.settings.classes.slice().sort(function(a,b){ return naturalClassCompare(a.name,b.name); }).forEach(function(c){
+          var planItems = state.plans[c.id] || [];
+          var st = examTargetStats(c.id, ex, startOrder);
+          var remain = st.remain;
+          var sessions = diff>0 ? countSessions(c.id, sessionsFrom, ex.startDate) : 0;
+          var tag='', tagClass='', dotHtml='';
+          if(planItems.length===0){ tag='진도계획 없음'; tagClass='tight'; }
+          else if(remain<=0){ tag='완료'; tagClass='done'; }
+          else if(diff<=0){ tag='시험 지남'; tagClass='danger'; }
+          else if(sessions===0){ tag='남은 수업 없음'; tagClass='danger'; }
+          else {
+            var pace = remain/sessions;
+            if(pace<=1){ tag='여유'; tagClass='ok'; }
+            else if(pace<=1.8){ tag='주의 · 1회 '+pace.toFixed(1)+'개'; tagClass='tight'; }
+            else { tag='주의 · 1회 '+pace.toFixed(1)+'개'; tagClass='danger'; }
+          }
+          dotHtml = tagClass==='done' ? '<span class="pace-tag-check">✓</span>' : '<span class="pace-tag-dot"></span>';
+          var progressPct = st.total>0 ? Math.round(st.done/st.total*100) : 0;
+          subHtml += '<div class="pace-row"><div class="pace-row-top"><span class="cname" style="color:'+darken(c.color,0.45)+'">'+escapeHtml(c.name)+
+            (st.rangeLabel?' <span style="font-size:0.6875rem;color:var(--ink-faint);font-weight:400;">('+st.rangeLabel+')</span>':'')+'</span>'+
+            '<span class="pace-tag '+tagClass+'">'+dotHtml+tag+'</span></div>'+
+            '<div class="pace-row-bottom"><span class="pace-nums">남은 <b>'+Math.max(remain,0)+'개</b> · 수업 <b>'+sessions+'회</b></span>'+
+            '<div class="pace-gauge-bg"><div class="pace-gauge-fill '+tagClass+'" style="width:'+progressPct+'%"></div></div></div>'+
+          '</div>';
+        });
+      }
+      allCards.push({ headerHtml: headerHtml, subHtml: subHtml, startDate: ex.startDate, footHtml:'' });
     });
-    html += '<div class="settings-section"><h3 style="font-size:0.875rem;">목표일 추가</h3>'+
-      '<div class="field-row"><label>이름 <span class="req">*</span></label><input type="text" id="ddayName" placeholder="예: 3단원 마감, 수행평가 제출 마감"></div>'+
-      '<div class="field-row"><label>날짜 <span class="req">*</span></label><input type="date" id="ddayDate"></div>'+
-      '<button class="btn small" id="addDdayBtn">추가</button></div>';
-  }
+  });
+
+  state.settings.customDdays.forEach(function(dd){
+    var diff = Math.ceil((parseDate(dd.date)-parseDate(today))/86400000);
+    var ddayText = diff===0?'D-DAY':(diff>0?('D-'+diff):('D+'+(-diff)));
+    var headerHtml = '<div class="exam-top"><span class="exam-name">'+escapeHtml(dd.name)+'<span class="source-chip personal">개인</span></span><span class="dday">'+ddayText+'</span></div>'+
+      '<div class="exam-date">'+niceDate(dd.date)+' ('+dayKorOf(dd.date)+')</div>';
+    var footHtml = '<div style="text-align:right;margin-top:6px;"><span class="del-dday" data-id="'+dd.id+'" style="font-size:0.75rem;color:var(--rose-deep);cursor:pointer;text-decoration:underline;">삭제</span></div>';
+    allCards.push({ headerHtml: headerHtml, subHtml:'', startDate: dd.date, footHtml: footHtml });
+  });
+
+  var sortedCards = sortByProximityToToday(allCards, function(x){ return x.startDate; }, today);
+  var expandedAssigned = false;
+  sortedCards.forEach(function(cd, idx){
+    var hasSub = !!cd.subHtml;
+    var isOpen = false;
+    if(hasSub && !expandedAssigned){ isOpen = true; expandedAssigned = true; }
+    var bodyId = 'examAccordion'+idx;
+    html += '<div class="exam-card">'+cd.headerHtml;
+    if(hasSub){
+      html += '<button class="accordion-toggle'+(isOpen?' open':'')+'" data-target="'+bodyId+'"><span>'+(isOpen?'반별 진도 접기':'반별 진도 보기')+'</span><span class="chev">▾</span></button>'+
+        '<div class="accordion-body'+(isOpen?' open':'')+'" id="'+bodyId+'">'+cd.subHtml+'</div>';
+    }
+    html += cd.footHtml+'</div>';
+  });
 
   el.innerHTML = html;
 
-  el.querySelectorAll('.tab-pill[data-filter]').forEach(function(p){
-    p.addEventListener('click', function(){ state.examFilterTab = p.getAttribute('data-filter'); renderExam(); });
-  });
-  var addBtn = document.getElementById('addDdayBtn');
-  if(addBtn){
-    addBtn.addEventListener('click', function(){
-      var name = document.getElementById('ddayName').value.trim();
-      var date = document.getElementById('ddayDate').value;
-      if(!name || !date) return;
-      state.settings.customDdays.push({ id:uid(), name:name, date:date });
-      saveSettings().then(function(){ renderExam(); flashSaved(); });
+  document.getElementById('addDdayMenuBtn').addEventListener('click', openDdayAddMenu);
+  el.querySelectorAll('.accordion-toggle').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var body = document.getElementById(btn.getAttribute('data-target'));
+      if(!body) return;
+      var willOpen = !body.classList.contains('open');
+      body.classList.toggle('open', willOpen);
+      btn.classList.toggle('open', willOpen);
+      btn.querySelector('span').textContent = willOpen ? '반별 진도 접기' : '반별 진도 보기';
     });
-  }
+  });
   el.querySelectorAll('.del-dday').forEach(function(x){
     x.addEventListener('click', function(){
       var id = x.getAttribute('data-id');
@@ -3019,6 +3078,35 @@ function renderExam(){
         }
       });
     });
+  });
+}
+
+// '+' 버튼 눌렀을 때 뜨는 작은 옵션 메뉴: 학사일정 추가(설정으로 이동) / 개인 D-day 추가(바로 모달)
+function openDdayAddMenu(){
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = '<div class="modal-box">'+
+    '<h3>D-day 추가</h3>'+
+    '<div class="settings-menu">'+
+      '<div class="settings-menu-row" id="ddayMenuAcademic">'+
+        '<div class="grow"><div class="smr-title">학사일정 D-day 추가</div><div class="smr-sub">시험 · 행사 등, 나이스 연동</div></div>'+
+        '<span class="smr-arrow">›</span></div>'+
+      '<div class="settings-menu-row" id="ddayMenuPersonal">'+
+        '<div class="grow"><div class="smr-title">개인 D-day 추가</div><div class="smr-sub">수행평가 제출, 개인 목표 등</div></div>'+
+        '<span class="smr-arrow">›</span></div>'+
+    '</div>'+
+  '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#ddayMenuAcademic').addEventListener('click', function(){
+    overlay.remove();
+    switchView('settings');
+    state.settingsTab = 'calendar';
+    renderSettings();
+  });
+  overlay.querySelector('#ddayMenuPersonal').addEventListener('click', function(){
+    overlay.remove();
+    openAddDdayModal();
   });
 }
 
