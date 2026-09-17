@@ -4554,6 +4554,7 @@ function showCoachmarkStep(step){
   if(!target){ closeCoachmark(); return; } // 아이콘이 화면에 없으면(반이 없어서 리포트 아이콘이 안 뜨는 경우 등) 조용히 닫는다
   coachmarkActiveStep = step;
   var ov = document.getElementById('coachmarkOverlay');
+  var isFirstShow = !ov;
   if(!ov){
     ov = document.createElement('div');
     ov.id = 'coachmarkOverlay';
@@ -4580,20 +4581,24 @@ function showCoachmarkStep(step){
   }
   document.getElementById('coachmarkText').textContent = cfg.text;
   document.getElementById('coachmarkNext').textContent = cfg.nextLabel;
-  positionCoachmark(target);
+  positionCoachmark(target, isFirstShow);
   requestAnimationFrame(function(){ ov.classList.add('show'); });
 }
-function positionCoachmark(target){
+// instant=true면 위치 이동 애니메이션 없이 즉시 그 자리에 배치한다 (처음 뜰 때 왼쪽 위에서 슬라이드해오는 것처럼 보이는 것 방지).
+// 1→2단계로 넘어갈 때는 instant를 안 넘겨서, 이전 위치에서 새 위치로 부드럽게 옮겨가도록 둔다.
+function positionCoachmark(target, instant){
+  var hole = document.getElementById('coachmarkHole');
+  var bubble = document.getElementById('coachmarkBubble');
+  if(instant){ hole.style.transition = 'none'; bubble.style.transition = 'none'; }
+
   var rect = target.getBoundingClientRect();
   var cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
   var radius = Math.max(rect.width, rect.height)/2 + 14;
-  var hole = document.getElementById('coachmarkHole');
   hole.style.left = (cx-radius)+'px';
   hole.style.top = (cy-radius)+'px';
   hole.style.width = (radius*2)+'px';
   hole.style.height = (radius*2)+'px';
 
-  var bubble = document.getElementById('coachmarkBubble');
   var bubbleWidth = Math.min(272, window.innerWidth-32);
   bubble.style.width = bubbleWidth+'px';
   var bubbleLeft = Math.min(window.innerWidth-16-bubbleWidth, Math.max(16, cx-bubbleWidth+36));
@@ -4601,12 +4606,18 @@ function positionCoachmark(target){
   bubble.style.top = (rect.bottom+16)+'px';
   var arrow = document.getElementById('coachmarkArrow');
   arrow.style.left = Math.max(14, Math.min(bubbleWidth-14, cx-bubbleLeft))+'px';
+
+  if(instant){
+    void bubble.offsetWidth; // 강제 리플로우로 위 위치를 즉시 확정시킨 다음에 트랜지션을 되돌린다
+    hole.style.transition = '';
+    bubble.style.transition = '';
+  }
 }
 window.addEventListener('resize', function(){
   if(coachmarkActiveStep){
     var cfg = COACHMARK_STEPS[coachmarkActiveStep];
     var target = document.getElementById(cfg.targetId);
-    if(target) positionCoachmark(target);
+    if(target) positionCoachmark(target, true);
   }
 });
 
