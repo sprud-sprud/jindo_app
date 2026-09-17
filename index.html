@@ -1374,6 +1374,21 @@ function classStats(classId){
   return { total:total, done:done, ratio: total? done/total : 0, last:last, next:next };
 }
 
+// 특정 날짜의 카드에 '지난 진도'로 보여줄 항목: 그 날짜까지(당일 포함)만 따져서 가장 최근에 나간 걸 찾는다.
+// classStats().last처럼 전체 최신을 쓰면, 예전 날짜를 다시 봐도 나중에 나간 진도가 나와버려서
+// "그 날짜 시점 기준"으로 따로 계산해야 지난 기록을 날짜별로 제대로 되짚어볼 수 있다.
+function lastProgressAsOf(classId, dateStr){
+  var items = state.plans[classId] || [];
+  var touched = items
+    .map(function(it, idx){ return { it:it, idx:idx }; })
+    .filter(function(x){ return x.it.doneDate && x.it.doneDate <= dateStr; });
+  touched.sort(function(a,b){
+    if(a.it.doneDate !== b.it.doneDate) return a.it.doneDate < b.it.doneDate ? 1 : -1;
+    return b.idx - a.idx; // 같은 날짜에 여러 개면 진도 순서상 더 앞서 나간(뒤 번호) 항목을 우선
+  });
+  return touched.length ? touched[0].it : null;
+}
+
 // 시험(주로 지필평가)마다 "이 시험까지 몇 번째 진도 항목까지 나가야 하는지"를 하나의 순번으로 지정해두면
 // 전체 진도계획이 아니라 그 범위만 기준으로 남은 진도를 계산한다. 반마다 세부 내용은 달라도 진도 순서는
 // 보통 같이 가기 때문에, 반별로 따로 지정하지 않고 시험 하나에 순번 하나만 지정한다.
@@ -2118,14 +2133,15 @@ function renderDayCard(dateStr, period, classId, isFocus, isMakeup){
 
   // '지난 진도' 조회 영역: 교사가 수업 직전 가장 먼저 확인하는 정보라 카드 맨 위에
   // 크고 굵은 하이라이트 블록(Hero)으로 따로 분리해서 보여준다.
-  // 오늘 날짜를 포함해서, 이 반에 저장된 진도 기록 중 가장 최근 것을 무조건 보여준다.
-  var cst = classStats(classId);
+  // 이 카드의 날짜를 기준으로, 그날짜까지(당일 포함) 중 가장 최근 기록을 보여준다.
+  // (전체 최신 기록을 쓰면 예전 날짜를 다시 봐도 나중에 나간 진도가 나와버려서, 그날 기준으로 따로 계산한다)
+  var lastAsOf = lastProgressAsOf(classId, dateStr);
   var prevHtml;
-  if(cst.last && cst.last.doneDate){
-    var lm = STATUS_META[cst.last.status||'done'];
+  if(lastAsOf && lastAsOf.doneDate){
+    var lm = STATUS_META[lastAsOf.status||'done'];
     prevHtml = '<div class="prev-hero"><div class="prev-hero-label">지난 진도</div>'+
-      '<div class="prev-hero-value">'+escapeHtml(cst.last.title)+(cst.last.donePage?('<br>'+escapeHtml(cst.last.donePage)):'')+'</div>'+
-      '<div class="prev-hero-meta">'+statusIconSvg(cst.last.status||'done',13)+'<span>'+(lm?lm.short:'')+' · '+niceDate(cst.last.doneDate)+'</span></div>'+
+      '<div class="prev-hero-value">'+escapeHtml(lastAsOf.title)+(lastAsOf.donePage?('<br>'+escapeHtml(lastAsOf.donePage)):'')+'</div>'+
+      '<div class="prev-hero-meta">'+statusIconSvg(lastAsOf.status||'done',13)+'<span>'+(lm?lm.short:'')+' · '+niceDate(lastAsOf.doneDate)+'</span></div>'+
     '</div>';
   } else {
     prevHtml = '<div class="prev-hero empty"><div class="prev-hero-label">지난 진도</div>'+
