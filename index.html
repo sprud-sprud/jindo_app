@@ -4589,7 +4589,8 @@ function showCoachmarkStep(step){
 function positionCoachmark(target, instant){
   var hole = document.getElementById('coachmarkHole');
   var bubble = document.getElementById('coachmarkBubble');
-  if(instant){ hole.style.transition = 'none'; bubble.style.transition = 'none'; }
+  var arrow = document.getElementById('coachmarkArrow');
+  if(instant){ hole.style.transition = 'none'; bubble.style.transition = 'none'; arrow.style.transition = 'none'; }
 
   var rect = target.getBoundingClientRect();
   var cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
@@ -4604,13 +4605,13 @@ function positionCoachmark(target, instant){
   var bubbleLeft = Math.min(window.innerWidth-16-bubbleWidth, Math.max(16, cx-bubbleWidth+36));
   bubble.style.left = bubbleLeft+'px';
   bubble.style.top = (rect.bottom+16)+'px';
-  var arrow = document.getElementById('coachmarkArrow');
   arrow.style.left = Math.max(14, Math.min(bubbleWidth-14, cx-bubbleLeft))+'px';
 
   if(instant){
     void bubble.offsetWidth; // 강제 리플로우로 위 위치를 즉시 확정시킨 다음에 트랜지션을 되돌린다
     hole.style.transition = '';
     bubble.style.transition = '';
+    arrow.style.transition = '';
   }
 }
 window.addEventListener('resize', function(){
