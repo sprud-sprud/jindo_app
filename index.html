@@ -13,7 +13,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>진도수첩</title>
-<meta name="theme-color" content="#F2F4F6">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="진도수첩">
@@ -1145,7 +1145,7 @@ function applyTheme(){
   var isDark = mode==='dark' || (mode==='system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
   var meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute('content', isDark ? '#2A1A15' : '#B84F39');
+  if(meta) meta.setAttribute('content', isDark ? '#17171C' : '#FFFFFF');
 }
 if(window.matchMedia){
   var __mq = window.matchMedia('(prefers-color-scheme: dark)');
