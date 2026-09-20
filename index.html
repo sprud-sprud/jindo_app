@@ -823,6 +823,8 @@
   .small-note{font-size:0.75rem;color:var(--ink-soft);line-height:1.6;margin:6px 0 10px;}
   .danger-zone{margin-top:20px;text-align:center;}
   .danger-zone button{background:none;border:none;color:var(--ink-faint);font-size:0.75rem;text-decoration:underline;cursor:pointer;}
+  .settings-footer-link{margin-top:24px;text-align:center;}
+  .settings-footer-link span{color:var(--ink-faint);font-size:0.75rem;text-decoration:underline;cursor:pointer;}
 
   .transfer-block{margin-top:10px;}
   .transfer-divider{height:1px;background:var(--line);margin:16px 0;}
@@ -3289,6 +3291,7 @@ function renderSettingsLanding(el){
     });
     html += '</div>';
   });
+  html += '<div class="settings-footer-link"><span id="privacyPolicyLink">정보처리방침</span></div>';
   el.innerHTML = html;
   el.querySelectorAll('.settings-menu-row').forEach(function(row){
     row.addEventListener('click', function(){
@@ -3298,6 +3301,9 @@ function renderSettingsLanding(el){
       state.settingsTab = tab;
       renderSettings();
     });
+  });
+  el.querySelector('#privacyPolicyLink').addEventListener('click', function(){
+    window.open('https://sprud-sprud.github.io/jindo_app/privacy.html', '_blank');
   });
 }
 
