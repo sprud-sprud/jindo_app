@@ -1849,6 +1849,44 @@ function generateTransferCode(){
   return String(Math.floor(100000 + Math.random()*900000));
 }
 
+// 서버 보안 규칙상 이미 쓰이는 번호에는 덮어쓸 수 없어서(401/403), 겹치면 다른 번호로 최대 3번까지 다시 시도한다.
+function uploadTransfer(jsonStr, attempt){
+  var code = generateTransferCode();
+  return fetch(RTDB_URL+'/transfers/'+code+'.json', {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ data: jsonStr, createdAt: Date.now() })
+  }).then(function(r){
+    if(r.ok) return code;
+    if((r.status===401 || r.status===403) && attempt<3) return uploadTransfer(jsonStr, attempt+1);
+    throw new Error('업로드 실패 ('+r.status+')');
+  });
+}
+
+// 내가 만든 이관 코드를 기억해 두었다가, 30분이 지난 것은 앱을 다시 켤 때(또는 새로 만들 때) 서버에서 지운다.
+// 불러오기가 안 된 데이터가 서버에 계속 남지 않게 하기 위한 정리 작업이다.
+function rememberTransferCode(code){
+  return loadJSON('transferPending', []).then(function(list){
+    list.push({ code: code, createdAt: Date.now() });
+    return saveJSON('transferPending', list);
+  }).catch(function(){});
+}
+function cleanupExpiredTransfers(){
+  return loadJSON('transferPending', []).then(function(list){
+    if(!list.length) return;
+    var now = Date.now(), keep = [], jobs = [];
+    list.forEach(function(it){
+      var age = now - it.createdAt;
+      if(age > 24*60*60*1000) return; // 하루가 지나도 못 지웠으면 기록만 정리한다
+      if(age <= 30*60*1000){ keep.push(it); return; }
+      jobs.push(fetch(RTDB_URL+'/transfers/'+it.code+'.json', { method:'DELETE' })
+        .then(function(r){ if(!r.ok) keep.push(it); })
+        .catch(function(){ keep.push(it); }));
+    });
+    return Promise.all(jobs).then(function(){ return saveJSON('transferPending', keep); });
+  }).catch(function(){});
+}
+
 function exportViaCode(btn, resultEl){
   var rtdbUrl = RTDB_URL;
   var origText = btn.textContent;
@@ -1856,15 +1894,8 @@ function exportViaCode(btn, resultEl){
   btn.disabled = true;
   resultEl.innerHTML = '';
   buildBackupObject().then(function(backup){
-    var code = generateTransferCode();
-    var jsonStr = JSON.stringify(backup);
-    return fetch(rtdbUrl+'/transfers/'+code+'.json', {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ data: jsonStr, createdAt: Date.now() })
-    }).then(function(r){
-      if(!r.ok) throw new Error('업로드 실패 ('+r.status+')');
-      return code;
+    return uploadTransfer(JSON.stringify(backup), 1).then(function(code){
+      return rememberTransferCode(code).then(function(){ return code; });
     });
   }).then(function(code){
     resultEl.innerHTML = '<div class="transfer-code-box">'+
@@ -5423,6 +5454,7 @@ function init(){
     renderOnboarding();
     maybeShowWeeklyReport();
     maybeShowRemotePopup();
+    cleanupExpiredTransfers();
     if(state.settings.onboardingDone && state.currentView==='today') maybeShowCoachmark(1);
     hideSplash();
   }).catch(function(e){
