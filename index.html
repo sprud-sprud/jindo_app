@@ -3358,8 +3358,9 @@ function renderSettingsLanding(el){
     row.addEventListener('click', function(){
       var tab = row.getAttribute('data-tab');
       if(tab==='notice'){
-        if(NOTICE_URL) window.open(NOTICE_URL, '_blank');
-        else alert('공지사항을 준비 중이에요.');
+        if(!NOTICE_URL) alert('공지사항을 준비 중이에요.');
+        else if(navigator.onLine===false) alert(OFFLINE_MSG);
+        else window.open(NOTICE_URL, '_blank');
         return;
       }
       if(tab==='guide'){ openGuideOptionsModal(); return; }
@@ -3369,6 +3370,7 @@ function renderSettingsLanding(el){
     });
   });
   el.querySelector('#privacyPolicyLink').addEventListener('click', function(){
+    if(navigator.onLine===false){ alert(OFFLINE_MSG); return; }
     window.open('https://sprud-sprud.github.io/jindo_app/privacy.html', '_blank');
   });
 }
@@ -4689,8 +4691,10 @@ var COACHMARK_STEPS = {
   2: { targetId:'weeklyReportBtn', view:'classes', text:'지난주 반별 진도 현황을 요약 리포트로 한눈에 모아보세요!', nextLabel:'확인' }
 };
 var coachmarkActiveStep = 0;
+var coachmarkRetry = 0;
 function maybeShowCoachmark(step){
   if(state.settings.isNewFeatureTutorialSeen) return;
+  if(state.settings.coachmarkShown) return; // 한 번 보여줬으면 앱을 켤 때마다 다시 띄우지 않는다
   if(coachmarkActiveStep) return; // 이미 코치마크가 떠있으면 새로 트리거하지 않는다
   // 화면이 실제로 그려질 시간을 살짝 준 다음, 타깃 아이콘 위치를 잡는다
   setTimeout(function(){ showCoachmarkStep(step); }, 250);
@@ -4715,6 +4719,18 @@ function showCoachmarkStep(step){
   if(state.currentView !== cfg.view){ closeCoachmark(); return; }
   var target = document.getElementById(cfg.targetId);
   if(!target){ closeCoachmark(); return; } // 아이콘이 화면에 없으면(반이 없어서 리포트 아이콘이 안 뜨는 경우 등) 조용히 닫는다
+  // 아직 화면 배치가 끝나지 않아 아이콘 크기가 0이면(위치가 화면 왼쪽 위로 잡히는 원인) 잠깐 기다렸다가 다시 시도한다
+  var probe = target.getBoundingClientRect();
+  if(!probe.width && !probe.height){
+    if(++coachmarkRetry <= 8) setTimeout(function(){ showCoachmarkStep(step); }, 150);
+    else { coachmarkRetry = 0; closeCoachmark(); }
+    return;
+  }
+  coachmarkRetry = 0;
+  if(step===1 && !state.settings.coachmarkShown){
+    state.settings.coachmarkShown = true;
+    saveSettings();
+  }
   coachmarkActiveStep = step;
   var ov = document.getElementById('coachmarkOverlay');
   var isFirstShow = !ov;
@@ -4746,6 +4762,11 @@ function showCoachmarkStep(step){
   document.getElementById('coachmarkNext').textContent = cfg.nextLabel;
   positionCoachmark(target, isFirstShow);
   requestAnimationFrame(function(){ ov.classList.add('show'); });
+  // 글꼴이 늦게 적용되는 등으로 화면이 살짝 밀려도 아이콘 위치에 다시 맞춘다
+  setTimeout(function(){
+    var t = document.getElementById(cfg.targetId);
+    if(coachmarkActiveStep===step && t) positionCoachmark(t, true);
+  }, 600);
 }
 // instant=true면 위치 이동 애니메이션 없이 즉시 그 자리에 배치한다 (처음 뜰 때 왼쪽 위에서 슬라이드해오는 것처럼 보이는 것 방지).
 // 1→2단계로 넘어갈 때는 instant를 안 넘겨서, 이전 위치에서 새 위치로 부드럽게 옮겨가도록 둔다.
