@@ -930,6 +930,7 @@ var DAYS = ['월','화','수','목','금'];
 var DOW_KOR = ['일','월','화','수','목','금','토'];
 var EXAM_TYPES = { mock:'모의고사', writtenExam:'지필평가', performance:'수행평가', event:'학교행사' };
 var RTDB_URL = 'https://jindo-transfer-default-rtdb.asia-southeast1.firebasedatabase.app';
+var NOTICE_URL = 'https://app.notion.com/p/8ee44c1bd453456a86c06122c2fcd4d4'; // 공지사항 노션 페이지 공개 링크 (비어 있으면 '준비 중' 안내)
 var NEIS_KEY = 'a588af37ac43467190d522f11817e616';
 var STATUS_ORDER = ['pending','inProgress','practicing','done'];
 var STATUS_META = {
@@ -3277,6 +3278,7 @@ function renderSettingsLanding(el){
       ['data','데이터 관리','백업 · 복원 · 내보내기']
     ]},
     { label:'도움말', items:[
+      ['notice','공지사항','업데이트 소식과 안내'],
       ['guide','앱 사용 가이드','사용 슬라이드 다시 보기 및 상세 튜토리얼'],
       ['feedback','버그 제보 및 피드백','불편한 점이나 아이디어를 보내주세요']
     ]}
@@ -3296,6 +3298,11 @@ function renderSettingsLanding(el){
   el.querySelectorAll('.settings-menu-row').forEach(function(row){
     row.addEventListener('click', function(){
       var tab = row.getAttribute('data-tab');
+      if(tab==='notice'){
+        if(NOTICE_URL) window.open(NOTICE_URL, '_blank');
+        else alert('공지사항을 준비 중이에요.');
+        return;
+      }
       if(tab==='guide'){ openGuideOptionsModal(); return; }
       if(tab==='feedback'){ window.open('https://forms.gle/dJA31xx3MUq16cPEA', '_blank'); return; }
       state.settingsTab = tab;
