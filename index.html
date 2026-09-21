@@ -353,7 +353,8 @@
 
   .onboarding-overlay{
     position:fixed;inset:0;background:var(--bg);z-index:9000;
-    display:flex;flex-direction:column;padding:28px 20px 20px;overflow-y:auto;
+    display:flex;flex-direction:column;
+    padding:calc(28px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom));overflow-y:auto;
   }
   .onboarding-dots{display:flex;gap:6px;justify-content:center;margin-bottom:28px;flex-shrink:0;}
   .onboarding-dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:all .2s ease;}
@@ -500,13 +501,22 @@
   .coachmark-actions .btn{flex-shrink:0;}
 
   .undo-toast{
-    position:fixed; left:50%; bottom:78px; transform:translateX(-50%);
+    position:fixed; left:50%; bottom:calc(78px + env(safe-area-inset-bottom)); transform:translateX(-50%);
     background:#2C2C2A; color:#fff; font-size:0.8125rem;
     padding:10px 14px; border-radius:10px; display:flex; align-items:center; gap:14px;
     z-index:999; box-shadow:0 4px 16px rgba(0,0,0,0.2);
     max-width:90vw;
   }
   .undo-toast .undo-btn{color:var(--coral); font-weight:600; text-decoration:underline; cursor:pointer; white-space:nowrap;}
+  .save-toast{
+    position:fixed; left:50%; bottom:calc(78px + env(safe-area-inset-bottom));
+    transform:translate(-50%,16px); opacity:0;
+    background:#2C2C2A; color:#fff; font-size:0.8125rem;
+    padding:10px 16px; border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,0.2);
+    z-index:999; max-width:90vw; pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  .save-toast.show{opacity:1; transform:translate(-50%,0);}
 
   .stamp{
     display:inline-flex;align-items:center;
@@ -824,7 +834,7 @@
   .danger-zone{margin-top:20px;text-align:center;}
   .danger-zone button{background:none;border:none;color:var(--ink-faint);font-size:0.75rem;text-decoration:underline;cursor:pointer;}
   .settings-footer-link{margin-top:24px;text-align:center;}
-  .settings-footer-link span{color:var(--ink-faint);font-size:0.75rem;text-decoration:underline;cursor:pointer;}
+  .settings-footer-link span{color:var(--ink-soft);font-size:0.8125rem;text-decoration:underline;cursor:pointer;padding:6px 4px;}
 
   .transfer-block{margin-top:10px;}
   .transfer-divider{height:1px;background:var(--line);margin:16px 0;}
@@ -1265,6 +1275,23 @@ function flashSaved(){
   flashSaved._t = setTimeout(function(){ b.classList.remove('show'); }, 1200);
 }
 
+// 아래에서 스르륵 올라왔다가 2초 뒤 사라지는 저장 안내 토스트
+function showSaveToast(message){
+  var old = document.getElementById('saveToast');
+  if(old) old.remove();
+  var t = document.createElement('div');
+  t.id = 'saveToast';
+  t.className = 'save-toast';
+  t.textContent = message;
+  document.body.appendChild(t);
+  void t.offsetWidth;
+  t.classList.add('show');
+  setTimeout(function(){
+    t.classList.remove('show');
+    setTimeout(function(){ if(t.parentNode) t.remove(); }, 300);
+  }, 2000);
+}
+
 function showUndoToast(message, undoFn){
   var existing = document.getElementById('undoToast');
   if(existing) existing.remove();
@@ -1305,7 +1332,7 @@ function getRecords(dateStr){
   var m = state.monthCache[ym] || {};
   return m[dateStr] || [];
 }
-function setRecord(dateStr, period, entry){
+function setRecord(dateStr, period, entry, quiet){
   var ym = ymOf(dateStr);
   if(!state.monthCache[ym]) state.monthCache[ym] = {};
   var m = state.monthCache[ym];
@@ -1314,7 +1341,7 @@ function setRecord(dateStr, period, entry){
   var idx = arr.findIndex(function(r){ return r.period === period; });
   if(idx >= 0) arr[idx] = entry; else arr.push(entry);
   arr.sort(function(a,b){ return a.period-b.period; });
-  return saveMonth(ym).then(flashSaved);
+  return saveMonth(ym).then(quiet ? function(){} : flashSaved);
 }
 function getExtras(dateStr){
   var ym = ymOf(dateStr);
@@ -1768,13 +1795,16 @@ function exportJSONBackup(btn){
   });
 }
 
-function importJSONBackup(file){
-  if(!confirm('백업 파일을 불러오면 지금 기기에 있는 데이터를 덮어써요. 계속할까요?')) return;
+function importJSONBackup(file, onDone){
+  // onDone이 있으면 온보딩(처음 설치)에서 부른 것이라 덮어쓸 기존 데이터가 없으니 확인창을 건너뛴다
+  if(!onDone && !confirm('백업 파일을 불러오면 지금 기기에 있는 데이터를 덮어써요. 계속할까요?')) return;
   var reader = new FileReader();
   reader.onload = function(e){
     try{
       var data = JSON.parse(e.target.result);
-      restoreBackupObject(data).catch(function(err){
+      restoreBackupObject(data).then(function(){
+        if(onDone) onDone();
+      }).catch(function(err){
         console.error(err);
         alert('올바른 백업 파일이 아니에요.');
       });
@@ -1795,6 +1825,25 @@ function isOfflineError(err){
   if(typeof navigator!=='undefined' && navigator.onLine===false) return true;
   return !!(err && err.name==='TypeError' && /fetch|network|load failed/i.test(String(err.message||'')));
 }
+
+// navigator.onLine은 와이파이에 붙어만 있으면 인터넷이 안 돼도 true라서, 작은 요청 하나로 실제 연결을 확인해 둔다.
+// (외부 링크를 열기 직전에 바로 쓸 수 있도록 결과를 미리 저장해 두는 방식)
+var netProbeOk = null;
+function probeConnectivity(){
+  try{
+    var ctrl = (typeof AbortController!=='undefined') ? new AbortController() : null;
+    var timer = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 4000);
+    fetch('https://sprud-sprud.github.io/jindo_app/privacy.html?t='+Date.now(), { method:'HEAD', mode:'no-cors', cache:'no-store', signal: ctrl ? ctrl.signal : undefined })
+      .then(function(){ netProbeOk = true; })
+      .catch(function(){ netProbeOk = false; })
+      .then(function(){ clearTimeout(timer); });
+  }catch(e){}
+}
+function isOffline(){
+  return (typeof navigator!=='undefined' && navigator.onLine===false) || netProbeOk===false;
+}
+window.addEventListener('online', function(){ netProbeOk = null; probeConnectivity(); });
+window.addEventListener('offline', function(){ netProbeOk = false; });
 
 function generateTransferCode(){
   return String(Math.floor(100000 + Math.random()*900000));
@@ -1832,14 +1881,14 @@ function exportViaCode(btn, resultEl){
   });
 }
 
-function importViaCode(btn, code, resultEl){
+function importViaCode(btn, code, resultEl, onDone){
   var rtdbUrl = RTDB_URL;
   code = (code||'').trim();
   if(!/^[0-9]{6}$/.test(code)){
     resultEl.innerHTML = '<p class="small-note">6자리 숫자 코드를 입력해주세요.</p>';
     return;
   }
-  if(!confirm('코드로 데이터를 불러오면 지금 기기에 있는 데이터를 덮어써요. 계속할까요?')) return;
+  if(!onDone && !confirm('코드로 데이터를 불러오면 지금 기기에 있는 데이터를 덮어써요. 계속할까요?')) return;
   var origText = btn.textContent;
   btn.textContent = '가져오는 중...';
   btn.disabled = true;
@@ -1859,6 +1908,7 @@ function importViaCode(btn, code, resultEl){
     resultEl.innerHTML = '<p class="small-note">불러오기 완료! 이 코드는 이제 사용할 수 없어요.</p>';
     btn.textContent = origText;
     btn.disabled = false;
+    if(onDone) onDone();
   }).catch(function(err){
     console.error('코드 가져오기 실패', err);
     resultEl.innerHTML = '<p class="small-note">'+escapeHtml(isOfflineError(err) ? OFFLINE_MSG : (err.message||'불러오기에 실패했어요.'))+'</p>';
@@ -2434,8 +2484,10 @@ function bindOneCard(card, dateStr, isFocus, isMakeup){
           if(ex.status!=='pending') it.doneDate = dateStr;
         }
       });
-      Promise.all([ setRecord(dateStr, period, entry), savePlans() ]).then(function(){
-        flashSaved();
+      Promise.all([ setRecord(dateStr, period, entry, true), savePlans() ]).then(function(){
+        var savedCls = getClass(classId);
+        var savedName = savedCls ? savedCls.name : '';
+        showSaveToast(savedName ? (savedName + (/반$/.test(savedName) ? '' : '반') + ' 진도가 저장되었어요') : '진도가 저장되었어요');
         renderToday(); // 지연 없이 바로 완료 구역으로 접어서 내려보낸다
         checkPuzzleMilestone(); // 이 저장으로 전체 진도가 50%/100%에 새로 도달했으면 축하 팝업
         checkFridayWrapupMilestone(dateStr); // 이 저장으로 금요일 수업이 모두 끝났으면 한 주 마무리 축하
@@ -3324,6 +3376,7 @@ function renderSettingsDisplay(body){
 
 // 설정 첫 화면: 한 번에 다 안 보여주고, 그룹별 목록만 먼저 보여준 다음 눌러야 세부 설정이 뜨게 한다.
 function renderSettingsLanding(el){
+  probeConnectivity();
   var groups = [
     { label:'화면', items:[
       ['display','화면 설정','글씨 크기 · 테마']
@@ -3352,14 +3405,14 @@ function renderSettingsLanding(el){
     });
     html += '</div>';
   });
-  html += '<div class="settings-footer-link"><span id="privacyPolicyLink">정보처리방침</span></div>';
+  html += '<div class="settings-footer-link"><span id="privacyPolicyLink">개인정보처리방침</span></div>';
   el.innerHTML = html;
   el.querySelectorAll('.settings-menu-row').forEach(function(row){
     row.addEventListener('click', function(){
       var tab = row.getAttribute('data-tab');
       if(tab==='notice'){
         if(!NOTICE_URL) alert('공지사항을 준비 중이에요.');
-        else if(navigator.onLine===false) alert(OFFLINE_MSG);
+        else if(isOffline()) alert(OFFLINE_MSG);
         else window.open(NOTICE_URL, '_blank');
         return;
       }
@@ -3370,7 +3423,7 @@ function renderSettingsLanding(el){
     });
   });
   el.querySelector('#privacyPolicyLink').addEventListener('click', function(){
-    if(navigator.onLine===false){ alert(OFFLINE_MSG); return; }
+    if(isOffline()){ alert(OFFLINE_MSG); return; }
     window.open('https://sprud-sprud.github.io/jindo_app/privacy.html', '_blank');
   });
 }
@@ -4832,6 +4885,7 @@ function hideSplash(){
 var onboardingStep = 1;
 var ONBOARDING_TOTAL_STEPS = 7;
 var onboardingGuideMode = false; // 설정 > 앱 사용 가이드로 다시 열었을 때는 소개 슬라이드 3장만 보여준다
+var onboardingImportMode = false; // 첫 화면에서 '기존 이용자예요'를 골랐을 때 데이터 가져오기 화면을 보여준다
 
 var ONBOARDING_INTRO = [
   {
@@ -4942,7 +4996,29 @@ function renderOnboarding(force){
   var backLink = onboardingStep>1 ? '<span class="onboarding-back" id="obBack">← 이전</span>' : '';
   var body, actions;
 
-  if(onboardingGuideMode && onboardingStep<=3){
+  if(onboardingImportMode && !onboardingGuideMode){
+    body = '<div class="onboarding-body">'+
+      '<span class="onboarding-back" id="obImportBack">← 이전</span>'+
+      '<div class="onboarding-title">이전 데이터를 가져올게요</div>'+
+      '<div class="onboarding-desc">쓰던 기기에서 내보낸 데이터를 이 기기로 옮길 수 있어요.</div>'+
+      '<div class="settings-section" style="margin-top:16px;">'+
+        '<h3>코드로 이관</h3>'+
+        '<p class="small-note">이전 기기의 <b>설정 → 데이터 관리 → 코드로 이관 → 내보내기</b>에서 받은 6자리 코드를 30분 안에 입력해주세요.</p>'+
+        '<div class="add-row"><input type="text" id="obImportCode" placeholder="6자리 코드" inputmode="numeric" maxlength="6" style="flex:1;">'+
+        '<button class="btn ghost small" id="obImportCodeBtn">가져오기</button></div>'+
+        '<div id="obImportCodeResult"></div>'+
+      '</div>'+
+      '<div class="settings-section">'+
+        '<h3>백업 파일</h3>'+
+        '<p class="small-note">이전 기기에서 내보낸 백업 파일(.json)을 선택해주세요.</p>'+
+        '<button class="btn ghost small" id="obImportFileBtn" style="width:100%;">백업 파일 불러오기</button>'+
+        '<input type="file" id="obImportFile" accept="application/json" style="display:none;">'+
+      '</div>'+
+    '</div>';
+    actions = '<div class="onboarding-actions">'+
+      '<span class="onboarding-skip" id="obImportSkip">가져오지 않고 처음부터 시작할게요</span>'+
+    '</div>';
+  } else if(onboardingGuideMode && onboardingStep<=3){
     var gslide = ONBOARDING_INTRO[onboardingStep-1];
     body = '<div class="onboarding-body">'+
       backLink+
@@ -4959,9 +5035,11 @@ function renderOnboarding(force){
       '<svg class="onboarding-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M22,54 L42,74 L80,28" fill="none" stroke="var(--coral-deep)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"></path></svg>'+
       '<div class="onboarding-title">진도수첩에 오신 걸 환영해요</div>'+
       '<div class="onboarding-desc">반과 시간표, 진도 계획을 등록해두면<br>매일 수업 진도를 훨씬 빠르게 기록할 수 있어요.<br>3분이면 충분해요.</div>'+
+      '<div class="onboarding-title" style="font-size:1rem;margin:22px 0 0;">진도수첩이 처음이신가요?</div>'+
     '</div>';
     actions = '<div class="onboarding-actions">'+
-      '<button class="btn" id="obNext" style="width:100%;">시작하기</button>'+
+      '<button class="btn" id="obNext" style="width:100%;">네, 처음이에요</button>'+
+      '<button class="btn ghost" id="obExisting" style="width:100%;">기존 이용자예요</button>'+
       '<span class="onboarding-skip" id="obSkip">나중에 할게요</span>'+
     '</div>';
   } else if(onboardingStep>=2 && onboardingStep<=4){
@@ -5030,7 +5108,37 @@ function renderOnboarding(force){
   bindOnboardingEvents(ov);
   if(isNew) bindOnboardingSwipe(ov);
 }
+// 온보딩에서 이전 데이터를 가져온 뒤: 온보딩을 끝낸 것으로 저장하고, 저장된 데이터로 앱을 다시 불러온다.
+function finishImportFromOnboarding(){
+  onboardingImportMode = false;
+  state.settings.onboardingDone = true;
+  saveSettings().then(function(){
+    showSaveToast('이전 데이터를 가져왔어요');
+    setTimeout(function(){ location.reload(); }, 1200);
+  });
+}
 function bindOnboardingEvents(ov){
+  var existingBtn = ov.querySelector('#obExisting');
+  if(existingBtn) existingBtn.onclick = function(){ onboardingImportMode = true; renderOnboarding(true); };
+  var importBack = ov.querySelector('#obImportBack');
+  if(importBack) importBack.onclick = function(){ onboardingImportMode = false; renderOnboarding(true); };
+  var importSkip = ov.querySelector('#obImportSkip');
+  if(importSkip) importSkip.onclick = function(){ onboardingImportMode = false; animateOnboardingStep(2); };
+  var importCodeBtn = ov.querySelector('#obImportCodeBtn');
+  if(importCodeBtn) importCodeBtn.onclick = function(){
+    importViaCode(importCodeBtn, ov.querySelector('#obImportCode').value, ov.querySelector('#obImportCodeResult'), finishImportFromOnboarding);
+  };
+  var importFileBtn = ov.querySelector('#obImportFileBtn');
+  var importFileInput = ov.querySelector('#obImportFile');
+  if(importFileBtn && importFileInput){
+    importFileBtn.onclick = function(){ importFileInput.click(); };
+    importFileInput.onchange = function(e){
+      var file = e.target.files[0];
+      if(!file) return;
+      importJSONBackup(file, finishImportFromOnboarding);
+      e.target.value = '';
+    };
+  }
   var backBtn = ov.querySelector('#obBack');
   if(backBtn) backBtn.onclick = function(){ animateOnboardingStep(onboardingStep-1); };
   var skipBtn = ov.querySelector('#obSkip');
