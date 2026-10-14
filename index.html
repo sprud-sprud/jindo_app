@@ -80,7 +80,7 @@
   :root[data-theme="dark"] .week-title{color:var(--ink);}
   :root[data-theme="dark"] .week-cell .wc-dow{color:var(--ink-faint);}
   :root[data-theme="dark"] .week-cell .wc-num{color:var(--ink);}
-  :root[data-theme="dark"] #openMonthSheetBtn{color:var(--ink-soft) !important;}
+  :root[data-theme="dark"] #openMonthSheetBtn, :root[data-theme="dark"] #notifBellBtn{color:var(--ink-soft) !important;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;overscroll-behavior:none;}
   body{
@@ -803,6 +803,69 @@
   }
   .theme-opt.active{background:var(--card);color:var(--coral-deep);box-shadow:var(--shadow-soft);}
 
+  /* 알림: 오늘 탭 종 아이콘 · 알림함 시트 · 설정 토글 */
+  .week-header-actions{display:flex;align-items:center;gap:2px;}
+  #notifBellBtn{position:relative;}
+  .bell-badge{
+    position:absolute;top:1px;right:3px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;
+    border-radius:8px;background:var(--coral-deep);color:#fff;
+    font-size:0.625rem;font-weight:700;line-height:16px;text-align:center;
+  }
+  /* 종 바로 아래에서 카드가 한 장씩 쌓여 내려오는 알림 팝오버 */
+  .ntf-pop-overlay{
+    position:fixed;inset:0;z-index:1000;background:rgba(25,31,40,0.28);
+    opacity:0;transition:opacity .18s ease;
+  }
+  .ntf-pop-overlay.show{opacity:1;}
+  .ntf-pop{
+    position:fixed;width:min(360px, calc(100vw - 24px));
+    display:flex;flex-direction:column;gap:8px;
+    overflow-y:auto;overscroll-behavior:contain;padding:2px 2px 8px;
+  }
+  .ntf-head{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--card);border-radius:14px;padding:11px 12px 11px 16px;
+    box-shadow:0 8px 24px rgba(0,0,0,.14);
+  }
+  .ntf-head h3{margin:0;font-size:0.9375rem;font-weight:800;color:var(--ink);}
+  .ntf-clear{background:none;border:none;color:var(--ink-soft);font-size:0.8125rem;font-weight:600;cursor:pointer;padding:4px 6px;font-family:inherit;border-radius:6px;}
+  .ntf-clear:active{background:var(--bg-soft);}
+  .ntf-item{
+    display:flex;gap:10px;align-items:flex-start;padding:12px 8px 12px 12px;cursor:pointer;
+    background:var(--card);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.14);
+    transition:transform .2s ease, opacity .2s ease;
+  }
+  .ntf-pop .ntf-head, .ntf-pop .ntf-item, .ntf-pop .ntf-empty{animation:ntfDrop .26s cubic-bezier(.2,.8,.3,1) both;}
+  @keyframes ntfDrop{ from{opacity:0;transform:translateY(-10px) scale(.97);} to{opacity:1;transform:none;} }
+  .ntf-pop.static .ntf-head, .ntf-pop.static .ntf-item, .ntf-pop.static .ntf-empty{animation:none;}
+  .ntf-item.removing{transform:translateX(110%);opacity:0;}
+  .ntf-item:active{transform:scale(.98);}
+  .ntf-item.unread .ntf-title::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--coral-deep);margin-left:6px;vertical-align:middle;}
+  .ntf-ico{flex-shrink:0;width:34px;height:34px;border-radius:50%;background:var(--bg-soft);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;}
+  .ntf-ico.unrecorded{background:var(--coral-bg);color:var(--coral-deep);}
+  .ntf-text{flex:1;min-width:0;}
+  .ntf-title{font-size:0.875rem;font-weight:700;color:var(--ink);}
+  .ntf-body{font-size:0.8125rem;color:var(--ink-soft);margin-top:2px;line-height:1.4;}
+  .ntf-meta{font-size:0.6875rem;color:var(--ink-faint);margin-top:4px;}
+  .ntf-done{color:var(--coral-deep);font-weight:600;margin-left:6px;}
+  .ntf-del{flex-shrink:0;background:none;border:none;color:var(--ink-faint);font-size:1.25rem;line-height:1;padding:2px 6px;cursor:pointer;border-radius:6px;font-family:inherit;}
+  .ntf-del:active{background:var(--bg-soft);}
+  .ntf-empty{text-align:center;padding:24px 16px 20px;background:var(--card);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.14);}
+  .ntf-empty-title{font-weight:700;color:var(--ink);margin-bottom:6px;}
+  .ntf-section-label{font-size:0.8125rem;font-weight:700;color:var(--ink-soft);margin:22px 2px 8px;}
+  .ntf-row{margin-bottom:8px !important;gap:12px;}
+  .ntf-row-desc{font-size:0.75rem;color:var(--ink-soft);margin-top:2px;}
+  .ntf-switch{
+    position:relative;flex-shrink:0;width:44px;height:26px;padding:0;
+    border-radius:13px;border:none;background:var(--ink-faint);cursor:pointer;transition:background .15s ease;
+  }
+  .ntf-switch::after{
+    content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .15s ease;
+  }
+  .ntf-switch.on{background:var(--coral-deep);}
+  .ntf-switch.on::after{transform:translateX(18px);}
+
   .pretty-timetable{
     background:#FFFFFF; border:1px solid var(--line); border-radius:14px;
     padding:16px; margin-bottom:6px;
@@ -1093,7 +1156,7 @@ function escapeHtml(s){
 function defaultSettings(){
   var schedule = {};
   DAYS.forEach(function(d){ schedule[d] = new Array(7).fill(null); });
-  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisOfcdc:'', neisSchul:'', neisSchoolName:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00', lunchAfterPeriod:4, lunchDuration:50, onboardingDone:false, themeMode:'system', dayOverrides:{}, makeupClasses:[], isNewFeatureTutorialSeen:false };
+  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisOfcdc:'', neisSchul:'', neisSchoolName:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00', lunchAfterPeriod:4, lunchDuration:50, cleaningAfterPeriod:0, cleaningDuration:20, onboardingDone:false, themeMode:'system', dayOverrides:{}, makeupClasses:[], isNewFeatureTutorialSeen:false };
 }
 var SCHOOL_LEVEL_DURATION = { elementary:40, middle:45, high:50 };
 function computePeriodTime(periodIndex){
@@ -1101,10 +1164,17 @@ function computePeriodTime(periodIndex){
   var breakDur = state.settings.breakDuration||10;
   var lunchAfter = state.settings.lunchAfterPeriod||0;
   var lunchDur = state.settings.lunchDuration||50;
+  // 청소·종례가 중간에 있는 학교(예: 6교시 후 청소·종례, 그 뒤 7교시)는 그 자리의 쉬는시간 대신 청소·종례 시간만큼 띄운다.
+  var cleaningAfter = state.settings.cleaningAfterPeriod||0;
+  var cleaningDur = state.settings.cleaningDuration||20;
   var mins = timeToMinutes(state.settings.firstPeriodStart||'09:00');
   for(var i=0; i<periodIndex; i++){
     mins += classDur;
-    mins += ((i+1)===lunchAfter) ? lunchDur : breakDur;
+    var isLunch = (i+1)===lunchAfter, isCleaning = (i+1)===cleaningAfter;
+    if(isLunch && isCleaning) mins += lunchDur + cleaningDur;
+    else if(isLunch) mins += lunchDur;
+    else if(isCleaning) mins += cleaningDur;
+    else mins += breakDur;
   }
   var start = minutesToTime(mins);
   var end = minutesToTime(mins + classDur);
@@ -1340,6 +1410,7 @@ function setRecord(dateStr, period, entry, quiet){
   var idx = arr.findIndex(function(r){ return r.period === period; });
   if(idx >= 0) arr[idx] = entry; else arr.push(entry);
   arr.sort(function(a,b){ return a.period-b.period; });
+  scheduleNotifSync(); // 기록하면 '기록 안 한 수업' 알림을 취소해야 하므로 예약을 다시 맞춘다
   return saveMonth(ym).then(quiet ? function(){} : flashSaved);
 }
 function getExtras(dateStr){
@@ -1365,7 +1436,7 @@ function removeExtra(dateStr, id){
   return saveMonth(ym).then(flashSaved);
 }
 
-function saveSettings(){ return saveJSON('settings', state.settings); }
+function saveSettings(){ scheduleNotifSync(); return saveJSON('settings', state.settings); }
 function savePlans(){ return saveJSON('plans', state.plans); }
 
 function getClass(id){ return state.settings.classes.find(function(c){ return c.id===id; }); }
@@ -2049,6 +2120,9 @@ function renderPrettyTimetable(){
     if(state.settings.lunchAfterPeriod===(p+1)){
       html += '<div class="pt-cell pt-lunch" style="grid-column:1 / -1;">점심시간</div>';
     }
+    if(state.settings.cleaningAfterPeriod===(p+1) && p+1<n){
+      html += '<div class="pt-cell pt-lunch" style="grid-column:1 / -1;">청소·종례</div>';
+    }
   }
   html += '</div></div>';
   html += '<button class="btn ghost small" id="saveTimetableImgBtn" style="width:100%;margin-top:10px;">이미지로 저장</button>';
@@ -2088,7 +2162,10 @@ function renderToday(){
   if(!isToday) html += '<button class="today-bar-btn" id="jumpTodayTop">오늘로 돌아가기</button>';
   html += '<div class="week-header">';
   html += '<div class="week-header-top"><div class="week-title">'+niceDate(d)+' '+weekdayLabel+'</div>'+
-    '<button class="icon-btn" id="openMonthSheetBtn" style="color:#4E5968;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 9.5h16"></path><path d="M8 3v3.5M16 3v3.5"></path></svg></button></div>';
+    '<div class="week-header-actions">'+
+    '<button class="icon-btn" id="openMonthSheetBtn" style="color:#4E5968;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 9.5h16"></path><path d="M8 3v3.5M16 3v3.5"></path></svg></button>'+
+    '<button class="icon-btn" id="notifBellBtn" style="color:#4E5968;" aria-label="알림"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.5V11a6 6 0 1 0-12 0v5.5L4.5 18.5h15z"></path><path d="M10 21a2 2 0 0 0 4 0"></path></svg>'+bellBadgeHtml()+'</button>'+
+    '</div></div>';
   html += buildWeekStripHtml(d);
   html += '</div>';
 
@@ -2147,6 +2224,8 @@ function renderToday(){
   });
   var msBtn = document.getElementById('openMonthSheetBtn');
   if(msBtn) msBtn.addEventListener('click', openMonthSheet);
+  var bellBtn = document.getElementById('notifBellBtn');
+  if(bellBtn) bellBtn.addEventListener('click', openNotifSheet);
   bindExtrasEvents(el, d, function(){ renderToday(); });
 
   el.querySelectorAll('.card-folded').forEach(function(fc){
@@ -3385,7 +3464,41 @@ function renderSettingsDisplay(body){
     '<div class="theme-seg">'+
       themeOpts.map(function(t){ return '<span class="theme-opt'+(curTheme===t[0]?' active':'')+'" data-mode="'+t[0]+'">'+t[1]+'</span>'; }).join('')+
     '</div></div>';
+  var ns = notifSettings();
+  var notifRows = [
+    ['beforeClass','수업 10분 전','수업 시작 10분 전에 알려드려요'],
+    ['unrecorded','기록 안 한 수업','수업이 끝나고 10분 뒤에도 진도 기록이 없으면 알려드려요'],
+    ['weeklyReport','월요일 리포트','매주 월요일 아침 8시에 지난주 요약을 알려드려요']
+  ];
+  html += '<div class="ntf-section-label">알림</div>';
+  notifRows.forEach(function(r){
+    var on = notifEffectiveOn(r[0]);
+    html += '<div class="fontsize-control ntf-row"><div><div class="fs-label">'+r[1]+'</div><div class="ntf-row-desc">'+r[2]+'</div></div>'+
+      '<button class="ntf-switch'+(on?' on':'')+'" data-key="'+r[0]+'" role="switch" aria-checked="'+(on?'true':'false')+'" aria-label="'+r[1]+'"></button></div>';
+  });
+  if(notifState.permission==='denied'){
+    html += '<p class="small-note">휴대폰 설정에서 이 앱의 알림 권한이 꺼져 있어요. 휴대폰 설정 &gt; 앱 &gt; 알림에서 허용해주세요.</p>';
+  } else if(notifPlugin() && notifState.permission!=='granted'){
+    html += '<p class="small-note">알림을 켜면 휴대폰에서 알림 권한을 한 번 물어봐요.</p>';
+  } else if(!notifPlugin()){
+    html += '<p class="small-note">알림은 휴대폰 앱에서만 울려요. 웹에서는 오늘 탭의 종 아이콘에서만 확인할 수 있어요.</p>';
+  }
   body.innerHTML = html;
+  body.querySelectorAll('.ntf-switch').forEach(function(sw){
+    sw.addEventListener('click', function(){
+      var key = sw.getAttribute('data-key');
+      var p;
+      if(notifEffectiveOn(key)){
+        ns[key] = false;
+        p = Promise.resolve();
+      } else {
+        // 켜는 순간 처음으로 권한을 묻는다. 허용하면 기본값으로 켜져 있던 다른 알림도 함께 켜진다.
+        ns[key] = true;
+        p = ensureNotifPermission();
+      }
+      p.then(function(){ return saveSettings(); }).then(function(){ renderSettingsDisplay(body); flashSaved(); });
+    });
+  });
   function changeScale(delta){
     var idx = closestScaleIndex(state.settings.fontScale||1);
     idx = Math.max(0, Math.min(FONT_SCALE_STEPS.length-1, idx+delta));
@@ -3409,7 +3522,7 @@ function renderSettingsLanding(el){
   probeConnectivity();
   var groups = [
     { label:'화면', items:[
-      ['display','화면 설정','글씨 크기 · 테마']
+      ['display','화면 설정','글씨 크기 · 테마 · 알림']
     ]},
     { label:'수업 관리', items:[
       ['schedule','시간표 관리','반 목록 · 일과시간 · 내 시간표'],
@@ -3996,7 +4109,21 @@ function buildPeriodsHtml(){
       })()+
       '</select></div>'+
     '<div class="field-row" style="flex:1;"><label>점심시간(분)</label><input type="text" id="lunchDurationInput" inputmode="numeric" value="'+state.settings.lunchDuration+'"'+(state.settings.lunchAfterPeriod===0?' disabled':'')+'></div>'+
-    '</div></div>';
+    '</div>';
+  var cleaningAfter = state.settings.cleaningAfterPeriod||0;
+  html += '<div class="add-row">'+
+    '<div class="field-row" style="flex:1;"><label>청소·종례 위치</label><select id="cleaningAfterSelect">'+
+      '<option value="0"'+(cleaningAfter===0?' selected':'')+'>없음 (마지막 교시 후)</option>'+
+      (function(){
+        var opts = '';
+        for(var i=1;i<n;i++){ opts += '<option value="'+i+'"'+(cleaningAfter===i?' selected':'')+'>'+i+'교시 이후</option>'; }
+        return opts;
+      })()+
+      '</select></div>'+
+    '<div class="field-row" style="flex:1;"><label>청소·종례(분)</label><input type="text" id="cleaningDurationInput" inputmode="numeric" value="'+(state.settings.cleaningDuration||20)+'"'+(cleaningAfter===0?' disabled':'')+'></div>'+
+    '</div>';
+  html += '<p class="small-note">청소·종례가 수업 사이에 있다면, 청소·종례 바로 앞 교시를 골라주세요. 그 뒤 교시 시각이 청소·종례 시간만큼 밀려요. (모든 수업이 끝난 뒤에 한다면 "없음"으로 두면 돼요)</p>';
+  html += '</div>';
   return html;
 }
 
@@ -4028,6 +4155,9 @@ function buildMyTimetableHtml(){
       var lp = computePeriodTime(p+1);
       var lunchStart = pt.end;
       html += '<tr class="lunch-row"><td colspan="'+(DAYS.length+1)+'">점심시간 · '+lunchStart+'~'+lp.start+'</td></tr>';
+    }
+    if(state.settings.cleaningAfterPeriod===(p+1) && p+1<n){
+      html += '<tr class="lunch-row"><td colspan="'+(DAYS.length+1)+'">청소·종례 · '+pt.end+'~'+computePeriodTime(p+1).start+'</td></tr>';
     }
   }
   html += '</tbody></table></div></div>';
@@ -4084,6 +4214,21 @@ function bindPeriodsEvents(body){
     lunchDurationInput.addEventListener('change', function(){
       var v = Math.max(10, Math.min(120, parseInt(this.value,10)||50));
       state.settings.lunchDuration = v;
+      saveSettings().then(function(){ renderSettingsTimetable(body); flashSaved(); });
+    });
+  }
+  var cleaningAfterSelect = document.getElementById('cleaningAfterSelect');
+  if(cleaningAfterSelect){
+    cleaningAfterSelect.addEventListener('change', function(){
+      state.settings.cleaningAfterPeriod = parseInt(this.value,10)||0;
+      saveSettings().then(function(){ renderSettingsTimetable(body); flashSaved(); });
+    });
+  }
+  var cleaningDurationInput = document.getElementById('cleaningDurationInput');
+  if(cleaningDurationInput){
+    cleaningDurationInput.addEventListener('change', function(){
+      var v = Math.max(5, Math.min(90, parseInt(this.value,10)||20));
+      state.settings.cleaningDuration = v;
       saveSettings().then(function(){ renderSettingsTimetable(body); flashSaved(); });
     });
   }
@@ -5343,6 +5488,357 @@ function maybeShowWeeklyReport(){
   showWeeklyReportModal(true);
 }
 
+// ---------- 알림 (수업 10분 전 · 기록 안 한 수업 · 월요일 리포트) ----------
+// 서버 없이 기기 안에서 예약하는 로컬 알림만 쓴다. iOS는 앱 하나당 대기 알림이 64개까지라
+// 앞으로 7일치만 계산해서 가까운 순으로 최대 60개만 예약하고, 앱을 열거나 기록/설정이 바뀔 때마다 다시 맞춘다.
+// 예약 시각이 지난 알림은 앱 안 알림함(오늘 탭 종 아이콘)으로 옮겨서 다시 보고 지울 수 있게 한다.
+var NOTIF_MAX_PENDING = 60;
+var NOTIF_INBOX_MAX = 50;
+var NOTIF_INBOX_DAYS = 14;
+var notifState = { ready:false, permission:null, scheduled:[], inbox:[] };
+var notifSyncTimer = null;
+
+function notifPlugin(){
+  var P = window.Capacitor && window.Capacitor.Plugins;
+  return (isNativeApp() && P && P.LocalNotifications) ? P.LocalNotifications : null;
+}
+function notifSettings(){
+  // 기본은 모두 켜짐. 다만 앱에서 알림 권한을 받기 전까지는 실제로 울리지 않으므로 설정 화면에서도 꺼진 것처럼 보이고,
+  // 토글을 켜는 순간 권한을 묻는다. (notifEffectiveOn 참고)
+  if(!state.settings.notif) state.settings.notif = { beforeClass:true, unrecorded:true, weeklyReport:true };
+  return state.settings.notif;
+}
+// 사용자가 켜뒀고, 앱이면 알림 권한까지 받은 상태여야 실제로 알림이 켜진 것으로 본다.
+function notifEffectiveOn(key){
+  return !!notifSettings()[key] && (!notifPlugin() || notifState.permission==='granted');
+}
+// 안드로이드 알림 id는 32비트 정수여야 해서, 알림 고유 키 문자열을 양의 정수로 바꿔 쓴다.
+function notifIdOf(key){
+  var h = 0;
+  for(var i=0; i<key.length; i++){ h = ((h<<5) - h + key.charCodeAt(i)) | 0; }
+  return (h & 0x7fffffff) || 1;
+}
+function dateTimeMs(dateStr, hhmm){
+  var d = parseDate(dateStr);
+  var m = timeToMinutes(hhmm);
+  d.setHours(Math.floor(m/60), m%60, 0, 0);
+  return d.getTime();
+}
+function findRecord(dateStr, period){
+  return getRecords(dateStr).find(function(r){ return r.period===period; }) || null;
+}
+function isRecordDone(rec){
+  return !!(rec && (rec.excused || rec.saved || rec.itemId || (rec.extraItems && rec.extraItems.length)));
+}
+// 수업 전 알림 본문: 수업 직전에 가장 먼저 확인하는 '지난 진도'를 오늘 카드와 같은 기준으로 보여준다.
+// 미래 날짜 알림은 예약 시점 기준이라, 기록을 저장할 때마다 다시 예약하면서 최신 진도로 바뀐다.
+function lastProgressLine(classId, dateStr){
+  var last = lastProgressAsOf(classId, dateStr);
+  if(!last) return '지난 진도 기록이 아직 없어요';
+  var idx = (state.plans[classId] || []).indexOf(last);
+  return '지난 진도 · '+(idx!==-1 ? (idx+1)+'. ' : '')+last.title+(last.donePage ? ' ('+last.donePage+')' : '');
+}
+
+// 앞으로 7일 동안 울릴 알림 목록을 지금 시간표/기록 기준으로 새로 계산한다.
+function buildNotifPlan(now){
+  // 권한을 받기 전에는 아무것도 예약하지 않는다. (실제로 울리지 않은 알림이 알림함에 쌓이지 않도록)
+  var ns = { beforeClass:notifEffectiveOn('beforeClass'), unrecorded:notifEffectiveOn('unrecorded'), weeklyReport:notifEffectiveOn('weeklyReport') };
+  if(!state.settings.classes.length) return [];
+  var today = todayStr();
+  var classItems = [];
+  for(var i=0; i<7; i++){
+    var d = addDays(today, i);
+    if(dayStatus(d)!=='school') continue;
+    scheduleFor(d).forEach(function(s){
+      var cls = getClass(s.classId);
+      if(!cls || findBlockingExam(d, s.classId, s.period)) return;
+      var pt = computePeriodTime(s.period-1);
+      var rec = findRecord(d, s.period);
+      if(ns.beforeClass && !(rec && rec.excused)){
+        classItems.push({ key:'before:'+d+':'+s.period, kind:'beforeClass', at:dateTimeMs(d, pt.start) - 10*60000, date:d, period:s.period,
+          title:'10분 뒤 '+s.period+'교시 · '+cls.name, body:lastProgressLine(s.classId, d) });
+      }
+      if(ns.unrecorded && !isRecordDone(rec)){
+        classItems.push({ key:'unrec:'+d+':'+s.period, kind:'unrecorded', at:dateTimeMs(d, pt.end) + 10*60000, date:d, period:s.period,
+          title:'진도 기록을 잊지 마세요', body:s.period+'교시 '+cls.name+' 수업 진도를 아직 기록하지 않았어요.' });
+      }
+    });
+  }
+  classItems = classItems.filter(function(n){ return n.at > now; })
+    .sort(function(a,b){ return a.at-b.at; })
+    .slice(0, NOTIF_MAX_PENDING-1); // 한 자리는 월요일 리포트용으로 남겨둔다
+  if(ns.weeklyReport){
+    for(var k=0; k<8; k++){
+      var md = addDays(today, k);
+      var at = dateTimeMs(md, '08:00');
+      if(dayKorOf(md)==='월' && at > now){
+        classItems.push({ key:'weekly:'+md, kind:'weeklyReport', at:at, date:md, period:null,
+          title:'지난주 진도 리포트가 도착했어요', body:'반별로 지난주에 나간 진도를 한눈에 확인해보세요.' });
+        break;
+      }
+    }
+  }
+  return classItems;
+}
+// 예약 시각이 지난 알림을 알림함으로 옮긴다. (앱이 꺼져 있을 때 울린 알림도 다음에 열면 여기 쌓인다)
+function moveDueToInbox(now){
+  var have = {};
+  notifState.inbox.forEach(function(n){ have[n.key] = true; });
+  notifState.scheduled.forEach(function(n){
+    if(n.at > now || have[n.key]) return;
+    notifState.inbox.push({ key:n.key, kind:n.kind, at:n.at, date:n.date, period:n.period, title:n.title, body:n.body, read:false });
+  });
+  notifState.scheduled = notifState.scheduled.filter(function(n){ return n.at > now; });
+  var cutoff = now - NOTIF_INBOX_DAYS*24*60*60000;
+  notifState.inbox = notifState.inbox.filter(function(n){ return n.at >= cutoff; })
+    .sort(function(a,b){ return b.at-a.at; })
+    .slice(0, NOTIF_INBOX_MAX);
+}
+function saveNotifState(){
+  saveJSON('notif:scheduled', notifState.scheduled);
+  return saveJSON('notif:inbox', notifState.inbox);
+}
+function scheduleNotifSync(){
+  if(!notifState.ready) return;
+  clearTimeout(notifSyncTimer);
+  notifSyncTimer = setTimeout(syncNotifications, 800);
+}
+function syncNotifications(){
+  var now = Date.now();
+  var today = todayStr();
+  return Promise.all([ ensureMonth(ymOf(today)), ensureMonth(ymOf(addDays(today, 6))) ]).then(function(){
+    moveDueToInbox(now);
+    notifState.scheduled = buildNotifPlan(now);
+    saveNotifState();
+    updateBellBadge();
+    var LN = notifPlugin();
+    if(!LN || notifState.permission!=='granted') return;
+    var plan = notifState.scheduled;
+    return LN.getPending().then(function(res){
+      var pending = (res && res.notifications) || [];
+      if(pending.length) return LN.cancel({ notifications: pending.map(function(n){ return { id:n.id }; }) });
+    }).then(function(){
+      if(!plan.length) return;
+      return LN.schedule({ notifications: plan.map(function(n){
+        return { id:notifIdOf(n.key), title:n.title, body:n.body,
+          schedule:{ at:new Date(n.at), allowWhileIdle:true },
+          extra:{ key:n.key, kind:n.kind, date:n.date, period:n.period } };
+      })});
+    });
+  }).catch(function(e){ console.error('알림 예약 실패', e); });
+}
+// 현재 권한 상태만 확인한다. (휴대폰 설정에서 권한을 바꾸고 돌아왔을 때도 다시 확인)
+function refreshNotifPermission(){
+  var LN = notifPlugin();
+  if(!LN) return Promise.resolve(null);
+  return LN.checkPermissions().then(function(st){
+    notifState.permission = st.display;
+    return st.display;
+  }).catch(function(e){ console.error('알림 권한 확인 실패', e); return null; });
+}
+// 아직 한 번도 묻지 않았으면 권한 팝업을 띄운다. 설정에서 알림 토글을 켤 때만 호출한다.
+function ensureNotifPermission(){
+  var LN = notifPlugin();
+  if(!LN) return Promise.resolve(null);
+  return LN.checkPermissions().then(function(st){
+    if(st.display==='granted' || st.display==='denied') return st;
+    return LN.requestPermissions();
+  }).then(function(st){
+    notifState.permission = st.display;
+    return st.display;
+  }).catch(function(e){ console.error('알림 권한 확인 실패', e); return null; });
+}
+// 알림(푸시 또는 알림함 항목)을 눌렀을 때 해당 화면으로 보내준다.
+function openNotifTarget(item){
+  if(!item) return;
+  if(item.kind==='weeklyReport'){
+    if(!document.querySelector('.wr-modal-box')) showWeeklyReportModal(state.settings.lastWeeklyReportShown!==todayStr());
+    return;
+  }
+  if(!item.date) return;
+  if(state.currentView!=='today') switchView('today');
+  state.currentDate = item.date;
+  goToDate(item.date);
+}
+function initNotifications(){
+  Promise.all([ loadJSON('notif:scheduled', []), loadJSON('notif:inbox', []) ]).then(function(res){
+    notifState.scheduled = res[0] || [];
+    notifState.inbox = res[1] || [];
+    notifSettings();
+    return refreshNotifPermission(); // 앱을 열 때는 묻지 않고 상태만 확인한다
+  }).then(function(){
+    notifState.ready = true;
+    var LN = notifPlugin();
+    if(LN){
+      LN.addListener('localNotificationReceived', function(){ syncNotifications(); });
+      LN.addListener('localNotificationActionPerformed', function(ev){
+        var extra = ev && ev.notification && ev.notification.extra;
+        syncNotifications().then(function(){
+          if(extra && extra.key) markNotifRead(extra.key);
+          openNotifTarget(extra);
+        });
+      });
+    }
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState!=='visible') return;
+      refreshNotifPermission().then(function(){
+        scheduleNotifSync();
+        if(state.currentView==='settings' && state.settingsTab==='display') renderSettings();
+      });
+    });
+    // 앱을 켜둔 채로 알림 시각이 지나도 종 배지가 바로 바뀌도록 1분마다 확인한다.
+    setInterval(function(){
+      var now = Date.now();
+      if(notifState.scheduled.some(function(n){ return n.at <= now; })) syncNotifications();
+    }, 60000);
+    return syncNotifications();
+  });
+}
+
+function notifUnreadCount(){
+  return notifState.inbox.filter(function(n){ return !n.read; }).length;
+}
+function bellBadgeHtml(){
+  var c = notifUnreadCount();
+  return c ? '<span class="bell-badge">'+(c>9?'9+':c)+'</span>' : '';
+}
+function updateBellBadge(){
+  var btn = document.getElementById('notifBellBtn');
+  if(!btn) return;
+  var old = btn.querySelector('.bell-badge');
+  if(old) old.remove();
+  btn.insertAdjacentHTML('beforeend', bellBadgeHtml());
+}
+function markNotifRead(key){
+  var n = notifState.inbox.find(function(x){ return x.key===key; });
+  if(n && !n.read){ n.read = true; saveNotifState(); updateBellBadge(); }
+}
+function removeDeliveredNotifs(keys){
+  var LN = notifPlugin();
+  if(!LN) return;
+  var p = keys ? LN.removeDeliveredNotifications({ notifications: keys.map(function(k){ return { id:notifIdOf(k) }; }) })
+    : LN.removeAllDeliveredNotifications();
+  p.catch(function(e){ console.error('알림 지우기 실패', e); });
+}
+function notifTimeLabel(at){
+  var d = new Date(at);
+  var ds = fmtDate(d);
+  var hm = pad2(d.getHours())+':'+pad2(d.getMinutes());
+  if(ds===todayStr()) return '오늘 '+hm;
+  if(ds===addDays(todayStr(), -1)) return '어제 '+hm;
+  return niceDate(ds)+' '+hm;
+}
+var NOTIF_ICONS = {
+  beforeClass:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>',
+  unrecorded:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="M13.5 6.5l4 4"></path></svg>',
+  weeklyReport:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M8 17V11"></path><path d="M12 17V7"></path><path d="M16 17v-4"></path></svg>'
+};
+
+// 종 아이콘을 누르면 바로 그 아래에서 알림 카드가 한 장씩 쌓여 내려온다. (바깥을 누르거나 Esc로 닫힘)
+function openNotifSheet(){
+  if(document.getElementById('notifSheetOverlay')) return;
+  var bell = document.getElementById('notifBellBtn');
+  var overlay = document.createElement('div');
+  overlay.className = 'ntf-pop-overlay';
+  overlay.id = 'notifSheetOverlay';
+  overlay.innerHTML = '<div class="ntf-pop" id="notifSheetInner"></div>';
+  document.body.appendChild(overlay);
+  var pop = overlay.querySelector('.ntf-pop');
+  var rect = bell ? bell.getBoundingClientRect() : { bottom:56, right:window.innerWidth-12 };
+  var top = Math.round(rect.bottom + 6);
+  pop.style.top = top+'px';
+  pop.style.right = Math.max(12, Math.round(window.innerWidth - rect.right - 4))+'px';
+  pop.style.maxHeight = (window.innerHeight - top - 12)+'px';
+  void overlay.offsetWidth;
+  overlay.classList.add('show');
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) closeNotifSheet(); });
+  document.addEventListener('keydown', notifSheetKeydown);
+  // 기록 완료 여부를 표시하려면 알림이 가리키는 달의 기록이 필요하다.
+  var yms = {};
+  notifState.inbox.forEach(function(n){ if(n.date) yms[ymOf(n.date)] = true; });
+  Promise.all(Object.keys(yms).map(ensureMonth)).then(function(){
+    renderNotifSheet();
+    // 열면 모두 읽음 처리한다. (지금 보이는 카드에서는 새 알림 점을 그대로 남겨둔다)
+    var changed = false;
+    notifState.inbox.forEach(function(n){ if(!n.read){ n.read = true; changed = true; } });
+    if(changed){ saveNotifState(); updateBellBadge(); }
+  });
+}
+function notifSheetKeydown(e){ if(e.key==='Escape') closeNotifSheet(); }
+function closeNotifSheet(){
+  document.removeEventListener('keydown', notifSheetKeydown);
+  var ov = document.getElementById('notifSheetOverlay');
+  if(!ov) return;
+  ov.id = '';
+  ov.classList.remove('show');
+  setTimeout(function(){ ov.remove(); }, 180);
+}
+function renderNotifSheet(unreadKeys){
+  var inner = document.getElementById('notifSheetInner');
+  if(!inner) return;
+  var firstRender = !unreadKeys;
+  inner.classList.toggle('static', !firstRender); // 지운 뒤 다시 그릴 때는 떨어지는 애니메이션을 생략
+  if(!unreadKeys){
+    unreadKeys = {};
+    notifState.inbox.forEach(function(n){ if(!n.read) unreadKeys[n.key] = true; });
+  }
+  var items = notifState.inbox.slice().sort(function(a,b){ return b.at-a.at; });
+  var html = '<div class="ntf-head"><h3>알림</h3>'+(items.length?'<button class="ntf-clear" id="ntfClearAll">모두 지우기</button>':'')+'</div>';
+  if(!items.length){
+    var anyOn = notifEffectiveOn('beforeClass') || notifEffectiveOn('unrecorded') || notifEffectiveOn('weeklyReport');
+    html += '<div class="ntf-empty"><div class="ntf-empty-title">도착한 알림이 없어요</div>'+
+      '<p class="small-note" style="margin:0;">'+(anyOn
+        ? '수업 10분 전, 기록 안 한 수업, 월요일 리포트 알림이 여기 모여요.'
+        : '알림이 모두 꺼져 있어요. 설정 &gt; 화면 설정에서 켤 수 있어요.')+'</p></div>';
+  } else {
+    items.forEach(function(n, i){
+      var doneTag = (n.kind==='unrecorded' && isRecordDone(findRecord(n.date, n.period))) ? '<span class="ntf-done">기록 완료</span>' : '';
+      html += '<div class="ntf-item'+(unreadKeys[n.key]?' unread':'')+'" data-key="'+escapeHtml(n.key)+'" style="animation-delay:'+Math.min(i+1, 8)*35+'ms;">'+
+        '<div class="ntf-ico '+n.kind+'">'+(NOTIF_ICONS[n.kind]||'')+'</div>'+
+        '<div class="ntf-text"><div class="ntf-title">'+escapeHtml(n.title)+'</div>'+
+          '<div class="ntf-body">'+escapeHtml(n.body)+'</div>'+
+          '<div class="ntf-meta">'+notifTimeLabel(n.at)+doneTag+'</div></div>'+
+        '<button class="ntf-del" data-key="'+escapeHtml(n.key)+'" aria-label="알림 지우기">×</button>'+
+      '</div>';
+    });
+  }
+  inner.innerHTML = html;
+
+  var clearBtn = document.getElementById('ntfClearAll');
+  if(clearBtn) clearBtn.addEventListener('click', function(){
+    if(!confirm('알림을 모두 지울까요?')) return;
+    notifState.inbox = [];
+    saveNotifState();
+    removeDeliveredNotifs(null);
+    updateBellBadge();
+    // 카드가 위에서부터 차례로 오른쪽으로 밀려 사라진 뒤 빈 화면으로 바꾼다.
+    var rows = inner.querySelectorAll('.ntf-item');
+    rows.forEach(function(row, i){ setTimeout(function(){ row.classList.add('removing'); }, i*40); });
+    setTimeout(function(){ renderNotifSheet(unreadKeys); }, Math.min(rows.length, 8)*40 + 220);
+  });
+  inner.querySelectorAll('.ntf-del').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var key = btn.getAttribute('data-key');
+      notifState.inbox = notifState.inbox.filter(function(n){ return n.key!==key; });
+      saveNotifState();
+      removeDeliveredNotifs([key]);
+      updateBellBadge();
+      var row = btn.closest('.ntf-item');
+      row.classList.add('removing');
+      setTimeout(function(){ renderNotifSheet(unreadKeys); }, 200);
+    });
+  });
+  inner.querySelectorAll('.ntf-item').forEach(function(row){
+    row.addEventListener('click', function(){
+      var key = row.getAttribute('data-key');
+      var n = notifState.inbox.find(function(x){ return x.key===key; });
+      closeNotifSheet();
+      openNotifTarget(n);
+    });
+  });
+}
+
 function init(){
   Promise.all([
     loadJSON('settings', null),
@@ -5368,6 +5864,8 @@ function init(){
     if(!state.settings.firstPeriodStart) state.settings.firstPeriodStart = '09:00';
     if(state.settings.lunchAfterPeriod===undefined) state.settings.lunchAfterPeriod = 4;
     if(!state.settings.lunchDuration) state.settings.lunchDuration = 50;
+    if(state.settings.cleaningAfterPeriod===undefined) state.settings.cleaningAfterPeriod = 0;
+    if(!state.settings.cleaningDuration) state.settings.cleaningDuration = 20;
     if(state.settings.onboardingDone === undefined){
       // 이 업데이트 이전부터 이미 반을 등록해서 쓰던 사용자는 온보딩을 볼 필요 없음
       state.settings.onboardingDone = state.settings.classes.length > 0;
@@ -5407,6 +5905,7 @@ function init(){
     renderOnboarding();
     maybeShowWeeklyReport();
     cleanupExpiredTransfers();
+    initNotifications();
     if(state.settings.onboardingDone && state.currentView==='today') maybeShowCoachmark(1);
     hideSplash();
   }).catch(function(e){
