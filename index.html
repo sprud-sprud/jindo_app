@@ -83,6 +83,8 @@
   :root[data-theme="dark"] #openMonthSheetBtn, :root[data-theme="dark"] #notifBellBtn{color:var(--ink-soft) !important;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;overscroll-behavior:none;}
+  /* iOS는 바운스가 없으면 스크롤이 끝에서 뚝 멈추는 느낌이 나서 기본 동작을 살린다 (안드로이드·웹은 당겨서 새로고침 방지를 위해 그대로 none) */
+  html.platform-ios, html.platform-ios body{overscroll-behavior:auto;}
   body{
     background:var(--bg);
     color:var(--ink);
@@ -168,6 +170,14 @@
   }
   .status-btn:active, .tab-pill:active, .card-folded:active, .excuse-btn:active, .nav-btn:active, .check:active, .settings-menu-row:active, .week-cell:active, .quick-add-btn:active{
     transform:scale(.96);
+    /* 스크롤하려고 손가락만 댔을 때 카드가 먼저 쑥 들어가면 스크롤이 걸리는 느낌이 나서, 눌림 효과를 살짝 늦게 시작한다 */
+    transition-delay:.08s;
+  }
+  /* 스크롤하는 동안에는 손가락 아래 카드가 눌린 모양으로 바뀌지 않게 한다 (is-scrolling은 스크롤 중에만 붙음) */
+  body.is-scrolling .status-btn:active, body.is-scrolling .tab-pill:active, body.is-scrolling .card-folded:active,
+  body.is-scrolling .excuse-btn:active, body.is-scrolling .check:active, body.is-scrolling .settings-menu-row:active,
+  body.is-scrolling .week-cell:active, body.is-scrolling .quick-add-btn:active, body.is-scrolling button.icon-btn:active{
+    transform:none;
   }
 
   .week-header{margin:6px 0 16px;}
@@ -543,6 +553,8 @@
     max-width:520px;
     margin:0 auto;
     width:100%;
+    /* 화면에 붙어 있는 탭 바를 별도 레이어로 올려서, 스크롤할 때마다 그림자까지 다시 그리지 않게 한다 */
+    transform:translateZ(0);
   }
   .nav-btn{
     flex:1;
@@ -811,6 +823,40 @@
     border-radius:8px;background:var(--coral-deep);color:#fff;
     font-size:0.625rem;font-weight:700;line-height:16px;text-align:center;
   }
+  /* 오늘 탭 '진도수첩 시작하기' 카드 · 컴시간 엑셀 상자 (온보딩 반 등록 단계에서도 사용) */
+  .setup-card{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-soft);
+    padding:18px 16px;margin-bottom:16px;
+  }
+  .setup-title{font-size:1.125rem;font-weight:800;color:var(--ink);}
+  .setup-desc{font-size:0.8125rem;color:var(--ink-soft);margin:4px 0 14px;}
+  .setup-excel{background:var(--coral-bg);border:1px solid var(--coral);border-radius:12px;padding:14px;text-align:left;}
+  .setup-excel-title{font-size:0.9375rem;font-weight:800;color:var(--coral-deep);}
+  .setup-excel-desc{font-size:0.8125rem;color:var(--ink-soft);margin:4px 0 10px;line-height:1.45;}
+  .setup-excel-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .setup-link{background:none;border:none;padding:4px 0;font-family:inherit;font-size:0.8125rem;font-weight:600;color:var(--coral-deep);cursor:pointer;}
+  .setup-or{text-align:center;font-size:0.75rem;color:var(--ink-faint);margin:12px 0 10px;}
+  .setup-steps{display:flex;flex-direction:column;gap:8px;}
+  .setup-step{
+    display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    background:var(--bg-soft);border:1px solid transparent;border-radius:12px;padding:12px;
+    font-family:inherit;cursor:pointer;
+  }
+  .setup-step:active{transform:scale(.98);}
+  .setup-num{
+    flex-shrink:0;width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:0.8125rem;font-weight:800;background:var(--card);color:var(--ink-soft);border:1px solid var(--line);
+  }
+  .setup-step.done .setup-num{background:var(--coral-deep);border-color:var(--coral-deep);color:#fff;}
+  .setup-step.done .setup-step-title{color:var(--ink-soft);}
+  .setup-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .setup-step-title{font-size:0.9063rem;font-weight:700;color:var(--ink);}
+  .setup-step-sub{font-size:0.75rem;color:var(--ink-soft);}
+  .setup-arrow{font-size:1.125rem;color:var(--ink-faint);}
+  /* 온보딩(z-index 9000) 중에 엑셀을 올리면 반 선택·미리보기 창이 온보딩 뒤에 숨지 않게 위로 올린다 */
+  #onboardingOverlay ~ .modal-overlay{z-index:9500;}
+
   /* 종 바로 아래에서 카드가 한 장씩 쌓여 내려오는 알림 팝오버 */
   .ntf-pop-overlay{
     position:fixed;inset:0;z-index:1000;background:rgba(25,31,40,0.28);
@@ -818,7 +864,7 @@
   }
   .ntf-pop-overlay.show{opacity:1;}
   .ntf-pop{
-    position:fixed;width:min(360px, calc(100vw - 24px));
+    position:fixed;width:min(360px, calc(100% - 24px));
     display:flex;flex-direction:column;gap:8px;
     overflow-y:auto;overscroll-behavior:contain;padding:2px 2px 8px;
   }
@@ -938,6 +984,11 @@
     if(raw){ var s = JSON.parse(raw); if(s && s.themeMode) mode = s.themeMode; }
     var isDark = mode==='dark' || (mode==='system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  }catch(e){}
+  // iOS 앱에서는 화면 끝에서 살짝 튕기는 기본 바운스 스크롤을 살린다. (CSS의 overscroll-behavior:none을 이 클래스로 풀어준다)
+  try{
+    var C = window.Capacitor;
+    if(C && typeof C.getPlatform==='function' && C.getPlatform()==='ios') document.documentElement.classList.add('platform-ios');
   }catch(e){}
 })();
 </script>
@@ -2163,14 +2214,16 @@ function renderToday(){
   html += '<div class="week-header">';
   html += '<div class="week-header-top"><div class="week-title">'+niceDate(d)+' '+weekdayLabel+'</div>'+
     '<div class="week-header-actions">'+
-    '<button class="icon-btn" id="openMonthSheetBtn" style="color:#4E5968;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 9.5h16"></path><path d="M8 3v3.5M16 3v3.5"></path></svg></button>'+
-    '<button class="icon-btn" id="notifBellBtn" style="color:#4E5968;" aria-label="알림"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.5V11a6 6 0 1 0-12 0v5.5L4.5 18.5h15z"></path><path d="M10 21a2 2 0 0 0 4 0"></path></svg>'+bellBadgeHtml()+'</button>'+
+    '<button class="icon-btn" id="openMonthSheetBtn" style="color:#4E5968;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 9.5h16"></path><path d="M8 3v3.5M16 3v3.5"></path></svg></button>'+    '<button class="icon-btn" id="notifBellBtn" style="color:#4E5968;" aria-label="알림"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.5V11a6 6 0 1 0-12 0v5.5L4.5 18.5h15z"></path><path d="M10 21a2 2 0 0 0 4 0"></path></svg>'+bellBadgeHtml()+'</button>'+
     '</div></div>';
   html += buildWeekStripHtml(d);
   html += '</div>';
 
-  if(state.settings.classes.length === 0){
-    html += emptyStateHtml('🏫','아직 반이 없어요','설정에서 반과 시간표를 먼저 만들어주세요.','settings');
+  // 온보딩을 건너뛴 사용자도 무엇부터 할지 알 수 있게, 설정이 덜 끝났으면 시작하기 카드를 먼저 보여준다.
+  var setup = setupProgress();
+  if(!setup.complete) html += setupChecklistHtml(setup);
+  if(!setup.classes || !setup.timetable){
+    // 반이나 시간표가 비어 있으면 아래 '수업 없는 날' 같은 안내가 헷갈리므로 시작하기 카드만 보여준다.
   } else {
     if(status==='vacation'){
       html += '<div class="empty-state"><h2>방학 기간이에요</h2><p>설정 &gt; 학사일정에서 학기 기간을 확인해보세요.</p></div>';
@@ -2226,6 +2279,7 @@ function renderToday(){
   if(msBtn) msBtn.addEventListener('click', openMonthSheet);
   var bellBtn = document.getElementById('notifBellBtn');
   if(bellBtn) bellBtn.addEventListener('click', openNotifSheet);
+  bindSetupButtons(el);
   bindExtrasEvents(el, d, function(){ renderToday(); });
 
   el.querySelectorAll('.card-folded').forEach(function(fc){
@@ -2237,6 +2291,81 @@ function renderToday(){
   });
 
   bindDayCardEvents(el, d);
+}
+
+// ---------- 시작하기 (온보딩을 건너뛴 사용자용 카드 + 온보딩 엑셀 업로드 공용) ----------
+// ① 반 ② 일과 시간 ③ 시간표가 끝나야 오늘 탭 카드가 사라진다. ④ 진도 계획은 선택.
+// ②는 기본값이 처음부터 들어 있어서 '채웠는지'로는 알 수 없으므로, 일과 시간 화면을 한 번 열어보면 완료로 본다.
+var GAMSIGAN_GUIDE_URL = 'https://m.blog.naver.com/sprudsprud/224414025094';
+function isTimetableFilled(){
+  return DAYS.some(function(dk){ return (state.settings.schedule[dk]||[]).some(function(cid){ return !!cid; }); });
+}
+function setupProgress(){
+  var p = {
+    classes: state.settings.classes.length > 0,
+    periods: !!state.settings.setupPeriodsSeen,
+    timetable: isTimetableFilled(),
+    plans: Object.keys(state.plans||{}).some(function(cid){ return (state.plans[cid]||[]).length > 0; })
+  };
+  p.complete = p.classes && p.periods && p.timetable;
+  return p;
+}
+// 컴시간 엑셀 안내 상자: 오늘 탭 시작하기 카드와 온보딩 반 등록 단계에서 같이 쓴다.
+function gamsiganBoxHtml(){
+  return '<div class="setup-excel">'+
+    '<div class="setup-excel-title">⚡ 컴시간 엑셀이 있다면 한 번에!</div>'+
+    '<p class="setup-excel-desc">컴시간 알리미에서 받은 \'교사별 시간표\' 엑셀로 반과 시간표를 한 번에 채워요.</p>'+
+    '<div class="setup-excel-actions">'+
+      '<button class="btn small" data-setup="excel">엑셀 업로드</button>'+
+      '<button class="setup-link" data-setup="excelGuide">엑셀 받는 법 보기 ›</button>'+
+    '</div></div>';
+}
+function setupChecklistHtml(p){
+  var steps = [
+    ['classes','반 등록하기','가르치는 반을 추가해요', p.classes],
+    ['periods','일과 시간 확인하기','1교시 시작 시각 · 점심시간 · 청소·종례', p.periods],
+    ['timetable','내 시간표 채우기','요일별로 몇 교시에 어느 반인지 넣어요', p.timetable],
+    ['plans','진도 계획 넣기 (선택)','단원·차시를 미리 넣어두면 고르기만 하면 돼요', p.plans]
+  ];
+  var html = '<div class="setup-card">'+
+    '<div class="setup-title">진도수첩 시작하기</div>'+
+    '<p class="setup-desc">아직 설정이 끝나지 않았어요. 아래 순서대로 해주세요!</p>';
+  // 엑셀 한 번이면 ①과 ③이 같이 채워지니, 둘 중 하나라도 남아 있을 때만 보여준다.
+  if(!p.classes || !p.timetable){
+    html += gamsiganBoxHtml()+'<div class="setup-or">또는 하나씩 직접 입력하기</div>';
+  }
+  html += '<div class="setup-steps">';
+  steps.forEach(function(s, i){
+    html += '<button class="setup-step'+(s[3]?' done':'')+'" data-setup="'+s[0]+'">'+
+      '<span class="setup-num">'+(s[3]?'✓':(i+1))+'</span>'+
+      '<span class="setup-text"><span class="setup-step-title">'+s[1]+'</span><span class="setup-step-sub">'+s[2]+'</span></span>'+
+      '<span class="setup-arrow">›</span></button>';
+  });
+  html += '</div></div>';
+  return html;
+}
+function bindSetupButtons(container){
+  container.querySelectorAll('[data-setup]').forEach(function(btn){
+    btn.addEventListener('click', function(){ gotoSetupStep(btn.getAttribute('data-setup')); });
+  });
+}
+function gotoSetupStep(key){
+  if(key==='excel'){ openGamsiganUploadFlow(); return; }
+  if(key==='excelGuide'){ window.open(GAMSIGAN_GUIDE_URL, '_blank'); return; }
+  switchView('settings');
+  if(key==='plans'){
+    state.settingsTab = 'plans';
+  } else {
+    state.settingsTab = 'schedule';
+    state.scheduleSubTab = { classes:'classes', periods:'periods', timetable:'myTimetable' }[key];
+  }
+  renderSettings();
+  window.scrollTo(0, 0);
+}
+function markPeriodsSeen(){
+  if(state.settings.setupPeriodsSeen) return;
+  state.settings.setupPeriodsSeen = true;
+  saveSettings();
 }
 
 function emptyStateHtml(emoji,title,desc,goto){
@@ -2784,6 +2913,16 @@ function animateDayChange(direction){
     });
   }, 140);
 }
+
+// 스크롤 중인 동안만 body에 is-scrolling을 붙인다. (눌림 효과 끄기용, 스크롤이 멈추고 0.15초 뒤 해제)
+(function setupScrollingFlag(){
+  var timer = null;
+  window.addEventListener('scroll', function(){
+    if(!timer) document.body.classList.add('is-scrolling');
+    clearTimeout(timer);
+    timer = setTimeout(function(){ document.body.classList.remove('is-scrolling'); timer = null; }, 150);
+  }, {passive:true});
+})();
 
 (function setupTodaySwipe(){
   var el = document.getElementById('view-today');
@@ -3887,6 +4026,12 @@ function applyGamsiganEntries(entries, included, nameMap){
     var b = document.getElementById('settingsBody');
     if(b) renderSettingsTimetable(b);
     flashSaved();
+    // 온보딩 '반 등록' 단계에서 올렸으면 반과 시간표가 다 채워졌으니 일과 시간 단계로 넘어간다.
+    if(document.getElementById('onboardingOverlay') && onboardingStep===5){
+      animateOnboardingStep(6);
+      return;
+    }
+    if(state.currentView==='today') renderToday();
     alert('시간표를 불러왔어요. 반 이름·색상은 "반 목록"에서 다시 확인해보세요.');
   });
 }
@@ -3926,6 +4071,7 @@ function renderSettingsTimetable(body){
     sub.innerHTML = buildClassesHtml();
   } else if(state.scheduleSubTab==='periods'){
     sub.innerHTML = buildPeriodsHtml();
+    markPeriodsSeen(); // 오늘 탭 시작하기 카드의 '② 일과 시간 확인하기' 완료
   } else {
     sub.innerHTML = buildMyTimetableHtml();
   }
@@ -5237,7 +5383,10 @@ function renderOnboarding(force){
       backLink+
       '<div class="onboarding-title">담당하시는 반을 등록해주세요</div>'+
       '<div class="onboarding-desc">나중에 설정에서 언제든 추가·수정할 수 있어요.</div>'+
-      '<div class="add-row" style="margin-top:16px;">'+
+      // 엑셀이 있으면 반을 손으로 입력하기 전에 먼저 알려준다. (입력 후 엑셀을 올리면 반이 겹칠 수 있어서)
+      '<div style="margin-top:16px;">'+gamsiganBoxHtml()+'</div>'+
+      '<div class="setup-or">또는 직접 입력하기</div>'+
+      '<div class="add-row">'+
         '<input type="text" id="obClassName" placeholder="반 이름 (예: 2학년 3반)" style="flex:2;">'+
         '<input type="text" id="obClassGrade" placeholder="학년 (선택)" style="flex:1;">'+
       '</div>'+
@@ -5266,11 +5415,22 @@ function renderOnboarding(force){
       '<button class="btn" id="obNext" style="width:100%;">다음</button>'+
       '<span class="onboarding-skip" id="obSkip">나중에 할게요</span>'+
     '</div>';
+  } else if(isTimetableFilled()){
+    // 반 등록 단계에서 컴시간 엑셀로 시간표까지 채운 경우: 진도계획만 남았다.
+    body = '<div class="onboarding-body">'+
+      backLink+
+      '<div class="onboarding-title">이제 진도계획만 채우면 끝이에요</div>'+
+      '<div class="onboarding-desc">시간표는 다 채워졌어요. 각 반이 어떤 순서로 진도를 나갈지 설정에서 입력해주세요. 나중에 해도 괜찮아요.</div>'+
+    '</div>';
+    actions = '<div class="onboarding-actions">'+
+      '<button class="btn" id="obGotoPlans" style="width:100%;">진도계획 입력하러 가기</button>'+
+      '<span class="onboarding-skip" id="obSkip">나중에 하고 오늘 화면으로 갈게요</span>'+
+    '</div>';
   } else {
     body = '<div class="onboarding-body">'+
       backLink+
       '<div class="onboarding-title">이제 시간표랑 진도계획만 채우면 끝이에요</div>'+
-      '<div class="onboarding-desc">요일별로 몇 교시에 어떤 반 수업이 있는지, 각 반은 어떤 순서로 진도를 나갈지 설정에서 입력해주세요. 컴시간 엑셀을 올리면 시간표는 한 번에 채워져요.</div>'+
+      '<div class="onboarding-desc">요일별로 몇 교시에 어떤 반 수업이 있는지, 각 반은 어떤 순서로 진도를 나갈지 설정에서 입력해주세요.</div>'+
     '</div>';
     actions = '<div class="onboarding-actions">'+
       '<button class="btn" id="obGotoSchedule" style="width:100%;">시간표 설정하러 가기</button>'+
@@ -5328,10 +5488,12 @@ function bindOnboardingEvents(ov){
       state.settings.schoolLevel = lvlSel.value;
       if(lvlSel.value !== 'custom' && SCHOOL_LEVEL_DURATION[lvlSel.value]) state.settings.classDuration = SCHOOL_LEVEL_DURATION[lvlSel.value];
       state.settings.firstPeriodStart = firstInput.value || '09:00';
+      state.settings.setupPeriodsSeen = true; // 오늘 탭 시작하기 카드의 '② 일과 시간 확인하기' 완료
       saveSettings();
     }
     animateOnboardingStep(onboardingStep+1);
   };
+  bindSetupButtons(ov); // 반 등록 단계의 컴시간 엑셀 업로드 · 받는 법 보기
   var addClassBtn = ov.querySelector('#obAddClass');
   if(addClassBtn) addClassBtn.onclick = function(){
     var nameInput = ov.querySelector('#obClassName');
@@ -5747,7 +5909,9 @@ function openNotifSheet(){
   var rect = bell ? bell.getBoundingClientRect() : { bottom:56, right:window.innerWidth-12 };
   var top = Math.round(rect.bottom + 6);
   pop.style.top = top+'px';
-  pop.style.right = Math.max(12, Math.round(window.innerWidth - rect.right - 4))+'px';
+  var vw = document.documentElement.clientWidth || window.innerWidth;
+  var right = Math.max(12, Math.round(vw - rect.right - 4));
+  pop.style.right = Math.min(right, Math.max(12, vw - pop.offsetWidth - 12))+'px';
   pop.style.maxHeight = (window.innerHeight - top - 12)+'px';
   void overlay.offsetWidth;
   overlay.classList.add('show');
@@ -5864,6 +6028,8 @@ function init(){
     if(!state.settings.firstPeriodStart) state.settings.firstPeriodStart = '09:00';
     if(state.settings.lunchAfterPeriod===undefined) state.settings.lunchAfterPeriod = 4;
     if(!state.settings.lunchDuration) state.settings.lunchDuration = 50;
+    // 이미 반과 시간표를 다 넣고 쓰던 사용자에게는 '일과 시간 확인' 단계 때문에 시작하기 카드가 뜨지 않게 한다.
+    if(state.settings.setupPeriodsSeen===undefined) state.settings.setupPeriodsSeen = state.settings.classes.length > 0 && isTimetableFilled();
     if(state.settings.cleaningAfterPeriod===undefined) state.settings.cleaningAfterPeriod = 0;
     if(!state.settings.cleaningDuration) state.settings.cleaningDuration = 20;
     if(state.settings.onboardingDone === undefined){
