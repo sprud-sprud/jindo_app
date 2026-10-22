@@ -3773,10 +3773,23 @@ function renderSettingsLab(body){
     }
     html += '</div>';
   }
+  // 홈 화면 위젯이 비어 있을 때 원인을 알 수 있게, 앱이 위젯에 마지막으로 데이터를 넘긴 결과를 작게 보여준다.
+  if(isNativeApp()){
+    var wl = null;
+    try{ wl = JSON.parse(localStorage.getItem(STORE_PREFIX+'widgetLast')||'null'); }catch(e){}
+    html += '<p class="small-note" id="widgetDiag">홈 화면 위젯: '+(wl ? (wl.ok ? escapeHtml(wl.at)+' 전달됨 ('+escapeHtml(wl.msg)+')' : escapeHtml(wl.at)+' · '+escapeHtml(wl.msg)) : '아직 전달 기록이 없어요')+'</p>'+
+      '<button class="btn ghost small" id="widgetRefreshBtn">위젯 지금 새로고침</button>';
+  }
   body.innerHTML = html;
   document.getElementById('labMealSwitch').addEventListener('click', function(){
     state.settings.labMeal = !state.settings.labMeal;
     saveSettings().then(function(){ renderSettingsLab(body); flashSaved(); });
+  });
+  var widgetRefreshBtn = document.getElementById('widgetRefreshBtn');
+  if(widgetRefreshBtn) widgetRefreshBtn.addEventListener('click', function(){
+    widgetRefreshBtn.disabled = true;
+    widgetRefreshBtn.textContent = '보내는 중…';
+    syncWidgetData().then(function(){ renderSettingsLab(body); });
   });
   var mealNotifSwitch = document.getElementById('labMealNotifSwitch');
   if(mealNotifSwitch) mealNotifSwitch.addEventListener('click', function(){
@@ -5991,10 +6004,10 @@ function getWidgetPlugin(){
   widgetPluginRef = false;
   try{
     var C = window.Capacitor;
-    if(isNativeApp() && C && typeof C.registerPlugin==='function'){
-      widgetPluginRef = C.registerPlugin('WidgetBridge');
+    if(isNativeApp() && C){
+      widgetPluginRef = (typeof C.registerPlugin==='function') ? C.registerPlugin('WidgetBridge') : true;
     }
-  }catch(e){}
+  }catch(e){ widgetPluginRef = isNativeApp() ? true : false; }
   return widgetPluginRef;
 }
 function scheduleWidgetSync(){
@@ -6033,18 +6046,61 @@ function buildWidgetData(){
       if(lunch) meals[md] = { dishes: lunch.dishes.map(function(x){ return x.name; }), cal: lunch.cal||'' };
     }
   }
-  return { updatedAt:Date.now(), today:today, periods:periods, days:days, mealEnabled:mealEnabled, meals:meals };
+  return { updatedAt:Date.now(), today:today, periods:periods, days:days, mealEnabled:mealEnabled, meals:meals, week:buildWidgetWeek() };
+}
+// '이번 주 시간표' 위젯용: 설정 > 내 시간표와 같은 요일×교시 격자 (요일별 기본 시간표)
+function buildWidgetWeek(){
+  var n = state.settings.periodsPerDay || 7;
+  var times = [];
+  for(var p=0; p<n; p++) times.push(computePeriodTime(p).start);
+  var grid = {};
+  DAYS.forEach(function(dk){
+    grid[dk] = [];
+    for(var p=0; p<n; p++){
+      var cid = (state.settings.schedule[dk]||[])[p];
+      var c = cid ? getClass(cid) : null;
+      grid[dk].push(c ? { name:c.name, color:c.color } : null);
+    }
+  });
+  return { days:DAYS.slice(), periods:n, times:times, grid:grid,
+    lunchAfter: state.settings.lunchAfterPeriod||0, cleaningAfter: state.settings.cleaningAfterPeriod||0 };
+}
+// iOS는 앱이 늦게 등록한 플러그인을 registerPlugin 프록시가 못 찾는 경우가 있어서,
+// 가능하면 플러그인 이름으로 네이티브를 직접 부른다.
+// 네이티브가 플러그인을 못 찾으면 iOS는 응답 없이 멈추므로, 6초 안에 답이 없으면 실패로 처리한다.
+function widgetSetData(json){
+  var C = window.Capacitor;
+  var call = (C && typeof C.nativePromise==='function')
+    ? C.nativePromise('WidgetBridge', 'setData', { json: json })
+    : getWidgetPlugin().setData({ json: json });
+  var timeout = new Promise(function(_, reject){
+    setTimeout(function(){ reject(new Error('앱(네이티브)이 응답하지 않아요')); }, 6000);
+  });
+  return Promise.race([ call, timeout ]);
+}
+// 설정 > 실험실 아래에 보여주는 마지막 전달 결과 (위젯이 비어 있을 때 원인 확인용)
+function recordWidgetResult(ok, msg){
+  var d = new Date();
+  try{ localStorage.setItem(STORE_PREFIX+'widgetLast', JSON.stringify({ ok:ok, at:pad2(d.getHours())+':'+pad2(d.getMinutes()), msg:msg||'' })); }catch(e){}
 }
 function syncWidgetData(){
   var plugin = getWidgetPlugin();
   if(!plugin) return Promise.resolve();
+  recordWidgetResult(false, '보내는 중… (데이터 준비)');
   var today = todayStr();
   var mealPrefetch = (state.settings.labMeal && state.settings.neisSchul)
     ? Promise.all([ loadMealDay(today), loadMealDay(addDays(today, 7)) ]).catch(function(){})
     : Promise.resolve();
   return Promise.all([ ensureMonth(ymOf(today)), ensureMonth(ymOf(addDays(today, 13))), mealPrefetch ]).then(function(){
-    return plugin.setData({ json: JSON.stringify(buildWidgetData()) });
-  }).catch(function(e){ console.error('위젯 데이터 전달 실패', e); });
+    var data = buildWidgetData();
+    recordWidgetResult(false, '보내는 중… (앱 네이티브로 전송)');
+    return widgetSetData(JSON.stringify(data)).then(function(){
+      recordWidgetResult(true, '수업 '+data.periods.length+'개 · 급식 '+Object.keys(data.meals).length+'일');
+    });
+  }).catch(function(e){
+    console.error('위젯 데이터 전달 실패', e);
+    recordWidgetResult(false, (e && (e.message||e.code)) || String(e));
+  });
 }
 
 function scheduleNotifSync(){
