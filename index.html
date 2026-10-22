@@ -823,6 +823,32 @@
     border-radius:8px;background:var(--coral-deep);color:#fff;
     font-size:0.625rem;font-weight:700;line-height:16px;text-align:center;
   }
+  /* 실험실 '우리학교 급식' 카드: 접힌 상태에선 메뉴 한 줄, 누르면 전체 메뉴·칼로리·알레르기 */
+  .meal-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-soft);margin-bottom:14px;overflow:hidden;}
+  .meal-head{
+    display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;text-align:left;
+    background:none;border:none;font-family:inherit;cursor:pointer;color:var(--ink);
+  }
+  .meal-ico{flex-shrink:0;width:34px;height:34px;border-radius:50%;background:var(--coral-bg);color:var(--coral-deep);display:flex;align-items:center;justify-content:center;}
+  .meal-head-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .meal-title{font-size:0.8125rem;font-weight:700;color:var(--ink-soft);}
+  .meal-summary{font-size:0.875rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .meal-chev{font-size:1.125rem;color:var(--ink-faint);transition:transform .2s ease;}
+  .meal-card.open .meal-chev{transform:rotate(90deg);}
+  .meal-card.open:not(.empty) .meal-summary{display:none;} /* 펼치면 아래 목록과 겹치므로 한 줄 요약은 숨긴다 */
+  .meal-card.empty .meal-summary{color:var(--ink-soft);font-weight:500;}
+  .meal-card.empty .meal-chev{visibility:hidden;}
+  .meal-body{display:none;padding:0 14px 14px 58px;}
+  .meal-card.open:not(.empty) .meal-body{display:block;}
+  .meal-block + .meal-block{margin-top:12px;}
+  .meal-type{font-size:0.75rem;font-weight:700;color:var(--coral-deep);margin-bottom:4px;}
+  .meal-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;}
+  .meal-list li{font-size:0.875rem;color:var(--ink);}
+  .meal-alg{font-size:0.6875rem;color:var(--ink-faint);margin-left:5px;}
+  .meal-cal{font-size:0.75rem;color:var(--ink-soft);margin-top:6px;}
+  .meal-legend{font-size:0.6875rem;color:var(--ink-soft);margin-top:10px;line-height:1.5;}
+  .meal-source{font-size:0.625rem;color:var(--ink-faint);margin-top:6px;}
+
   /* 오늘 탭 '진도수첩 시작하기' 카드 · 컴시간 엑셀 상자 (온보딩 반 등록 단계에서도 사용) */
   .setup-card{
     background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-soft);
@@ -888,7 +914,7 @@
   .ntf-item:active{transform:scale(.98);}
   .ntf-item.unread .ntf-title::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--coral-deep);margin-left:6px;vertical-align:middle;}
   .ntf-ico{flex-shrink:0;width:34px;height:34px;border-radius:50%;background:var(--bg-soft);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;}
-  .ntf-ico.unrecorded{background:var(--coral-bg);color:var(--coral-deep);}
+  .ntf-ico.unrecorded, .ntf-ico.meal{background:var(--coral-bg);color:var(--coral-deep);}
   .ntf-text{flex:1;min-width:0;}
   .ntf-title{font-size:0.875rem;font-weight:700;color:var(--ink);}
   .ntf-body{font-size:0.8125rem;color:var(--ink-soft);margin-top:2px;line-height:1.4;}
@@ -1488,7 +1514,7 @@ function removeExtra(dateStr, id){
 }
 
 function saveSettings(){ scheduleNotifSync(); return saveJSON('settings', state.settings); }
-function savePlans(){ return saveJSON('plans', state.plans); }
+function savePlans(){ scheduleWidgetSync(); return saveJSON('plans', state.plans); }
 
 function getClass(id){ return state.settings.classes.find(function(c){ return c.id===id; }); }
 // 특정 날짜에 다른 요일 시간표를 적용해뒀으면(일회성 교체) 그 요일 기준으로 시간표를 읽는다.
@@ -2069,7 +2095,8 @@ function importViaCode(btn, code, resultEl, onDone){
   });
 }
 
-function searchNeisSchool(key, name, body){
+// onPicked가 있으면 학교를 고른 뒤 학사일정 화면 대신 그 콜백을 부른다. (실험실 급식 화면에서 같이 사용)
+function searchNeisSchool(key, name, body, onPicked){
   var resultsEl = document.getElementById('neisSearchResults');
   if(!key || !name){
     resultsEl.innerHTML = '<p class="small-note">인증키와 학교 이름을 모두 입력해주세요.</p>';
@@ -2101,7 +2128,7 @@ function searchNeisSchool(key, name, body){
         state.settings.neisOfcdc = r.ATPT_OFCDC_SC_CODE;
         state.settings.neisSchul = r.SD_SCHUL_CODE;
         state.settings.neisSchoolName = r.SCHUL_NM+' ('+(r.ATPT_OFCDC_SC_NM||'')+')';
-        saveSettings().then(function(){ renderSettingsSemesterHoliday(body); flashSaved(); });
+        saveSettings().then(function(){ if(onPicked) onPicked(); else renderSettingsSemesterHoliday(body); flashSaved(); });
       });
     });
   }).catch(function(err){
@@ -2222,6 +2249,9 @@ function renderToday(){
   // 온보딩을 건너뛴 사용자도 무엇부터 할지 알 수 있게, 설정이 덜 끝났으면 시작하기 카드를 먼저 보여준다.
   var setup = setupProgress();
   if(!setup.complete) html += setupChecklistHtml(setup);
+  // 실험실 '우리학교 급식': 평일이고 학교가 정해져 있을 때만, 날짜 바로 아래에 접힌 카드로 보여준다. (내용은 비동기로 채움)
+  var showMeal = !!(state.settings.labMeal && state.settings.neisSchul && DAYS.indexOf(dayKorOf(d))!==-1);
+  if(showMeal) html += mealCardShellHtml(d);
   if(!setup.classes || !setup.timetable){
     // 반이나 시간표가 비어 있으면 아래 '수업 없는 날' 같은 안내가 헷갈리므로 시작하기 카드만 보여준다.
   } else {
@@ -2279,6 +2309,7 @@ function renderToday(){
   if(msBtn) msBtn.addEventListener('click', openMonthSheet);
   var bellBtn = document.getElementById('notifBellBtn');
   if(bellBtn) bellBtn.addEventListener('click', openNotifSheet);
+  if(showMeal) fillMealCard(d);
   bindSetupButtons(el);
   bindExtrasEvents(el, d, function(){ renderToday(); });
 
@@ -3567,7 +3598,7 @@ function renderSettings(){
     renderSettingsLanding(el);
     return;
   }
-  var titles = { display:'화면 설정', schedule:'시간표 관리', calendar:'학사일정', plans:'진도계획', data:'데이터 관리' };
+  var titles = { display:'화면 설정', schedule:'시간표 관리', calendar:'학사일정', plans:'진도계획', data:'데이터 관리', lab:'실험실' };
   var html = '<div class="settings-back" id="settingsBackBtn">‹ 설정</div>';
   html += '<h1 style="margin:2px 0 16px;">'+titles[state.settingsTab]+'</h1>';
   html += '<div id="settingsBody"></div>';
@@ -3584,6 +3615,7 @@ function renderSettings(){
   else if(state.settingsTab==='calendar') renderSettingsCalendar(body);
   else if(state.settingsTab==='plans') renderSettingsPlans(body);
   else if(state.settingsTab==='data') renderSettingsData(body);
+  else if(state.settingsTab==='lab') renderSettingsLab(body);
 }
 
 // '화면' 상세 화면: 글씨 크기 + 테마. 예전엔 설정 첫 화면에 항상 떠있던 걸 여기로 옮겼다.
@@ -3663,6 +3695,9 @@ function renderSettingsLanding(el){
     { label:'화면', items:[
       ['display','화면 설정','글씨 크기 · 테마 · 알림']
     ]},
+    { label:'실험실', items:[
+      ['lab','실험실','미리 써보는 기능']
+    ]},
     { label:'수업 관리', items:[
       ['schedule','시간표 관리','반 목록 · 일과시간 · 내 시간표'],
       ['calendar','학사일정','시험 · 방학 · 공휴일'],
@@ -3707,6 +3742,180 @@ function renderSettingsLanding(el){
   el.querySelector('#privacyPolicyLink').addEventListener('click', function(){
     if(isOffline()){ alert(OFFLINE_MSG); return; }
     window.open('https://sprud-sprud.github.io/jindo_app/privacy.html', '_blank');
+  });
+}
+
+// ---------- 실험실 ----------
+// 정식 기능이 되기 전에 켜서 써보는 기능 모음. 지금은 '우리학교 급식' 하나.
+function renderSettingsLab(body){
+  var on = !!state.settings.labMeal;
+  var hasSchool = !!(state.settings.neisOfcdc && state.settings.neisSchul);
+  var html = '<p class="small-note" style="margin-top:0;">아직 다듬는 중인 기능이에요. 써보시고 불편한 점은 피드백으로 알려주세요.</p>';
+  html += '<div class="fontsize-control ntf-row"><div><div class="fs-label">우리학교 급식</div>'+
+    '<div class="ntf-row-desc">나이스에서 급식을 불러와 오늘 탭에 보여줘요</div></div>'+
+    '<button class="ntf-switch'+(on?' on':'')+'" id="labMealSwitch" role="switch" aria-checked="'+(on?'true':'false')+'" aria-label="우리학교 급식"></button></div>';
+  if(on && hasSchool){
+    var notifOn = mealNotifOn();
+    html += '<div class="fontsize-control ntf-row"><div><div class="fs-label">급식 알림</div>'+
+      '<div class="ntf-row-desc">수업 있는 날 '+MEAL_NOTIF_TIME+'에 오늘 점심 메뉴를 알려드려요</div></div>'+
+      '<button class="ntf-switch'+(notifOn?' on':'')+'" id="labMealNotifSwitch" role="switch" aria-checked="'+(notifOn?'true':'false')+'" aria-label="급식 알림"></button></div>';
+  }
+  if(on){
+    html += '<div class="settings-section"><h3>학교</h3>';
+    if(hasSchool){
+      html += '<div class="list-row"><div class="grow">'+escapeHtml(state.settings.neisSchoolName||'선택된 학교')+'</div>'+
+        '<span id="labSchoolChange" style="font-size:0.75rem;color:var(--coral-deep);text-decoration:underline;cursor:pointer;">변경</span></div>'+
+        '<p class="small-note" style="margin-bottom:0;">학사일정(나이스 불러오기)과 같은 학교를 써요.</p>';
+    } else {
+      html += '<p class="small-note" style="margin-top:0;">급식을 불러올 학교를 검색해서 골라주세요.</p>'+
+        '<div class="add-row"><input type="text" id="neisSchoolSearch" placeholder="예: ㅇㅇ고등학교" style="flex:1;"><button class="btn ghost small" id="labSchoolSearchBtn">검색</button></div>'+
+        '<div id="neisSearchResults" style="margin-top:8px;"></div>';
+    }
+    html += '</div>';
+  }
+  body.innerHTML = html;
+  document.getElementById('labMealSwitch').addEventListener('click', function(){
+    state.settings.labMeal = !state.settings.labMeal;
+    saveSettings().then(function(){ renderSettingsLab(body); flashSaved(); });
+  });
+  var mealNotifSwitch = document.getElementById('labMealNotifSwitch');
+  if(mealNotifSwitch) mealNotifSwitch.addEventListener('click', function(){
+    var p;
+    if(mealNotifOn()){ state.settings.labMealNotif = false; p = Promise.resolve(); }
+    else { state.settings.labMealNotif = true; p = ensureNotifPermission(); } // 처음 켤 때 알림 권한을 묻는다
+    p.then(function(){ return saveSettings(); }).then(function(){ renderSettingsLab(body); flashSaved(); });
+  });
+  var changeBtn = document.getElementById('labSchoolChange');
+  if(changeBtn) changeBtn.addEventListener('click', function(){
+    state.settings.neisOfcdc = ''; state.settings.neisSchul = ''; state.settings.neisSchoolName = '';
+    saveSettings().then(function(){ renderSettingsLab(body); });
+  });
+  var searchBtn = document.getElementById('labSchoolSearchBtn');
+  if(searchBtn){
+    var doSearch = function(){
+      searchNeisSchool(NEIS_KEY, document.getElementById('neisSchoolSearch').value.trim(), body, function(){ renderSettingsLab(body); });
+    };
+    searchBtn.addEventListener('click', doSearch);
+    document.getElementById('neisSchoolSearch').addEventListener('keydown', function(e){ if(e.key==='Enter') doSearch(); });
+  }
+}
+
+// ---------- 우리학교 급식 (실험실) ----------
+// 나이스 급식 API를 주 단위로 한 번 불러와 기기에 저장하고, 같은 날에는 다시 부르지 않는다.
+// (앱에 들어 있는 나이스 인증키 하나를 모든 사용자가 같이 쓰기 때문에 호출을 아낀다)
+// 다른 메뉴 아이콘과 같은 선 아이콘(김이 나는 그릇)
+var MEAL_ICON_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12h17a8.5 8.5 0 0 1-17 0z"></path><path d="M8 20.5h8"></path><path d="M8.5 8.5c0-1.2 1-1.6 1-2.8M12 8.5c0-1.2 1-1.6 1-2.8M15.5 8.5c0-1.2 1-1.6 1-2.8"></path></svg>';
+var MEAL_NOTIF_TIME = '11:00';
+// 급식 알림: 실험실 급식이 켜져 있고, 알림을 끄지 않았고, 앱이면 알림 권한까지 받은 상태
+function mealNotifOn(){
+  return !!(state.settings.labMeal && state.settings.neisSchul && state.settings.labMealNotif!==false &&
+    (!notifPlugin() || notifState.permission==='granted'));
+}
+// 이미 받아둔(메모리) 급식에서 그날 점심만 꺼낸다. 알림 예약처럼 기다릴 수 없는 곳에서 쓴다.
+function mealLunchSync(dateStr){
+  var entry = mealMem[weekStartOf(dateStr)];
+  var meals = (entry && entry.days[dateStr]) || [];
+  return meals.find(function(m){ return m.type==='중식'; }) || meals[0] || null;
+}
+var ALLERGY_NAMES = ['난류','우유','메밀','땅콩','대두','밀','고등어','게','새우','돼지고기','복숭아','토마토','아황산류','호두','닭고기','쇠고기','오징어','조개류','잣'];
+var mealMem = {}; // 'YYYY-MM-DD(주 시작)' -> 캐시 객체
+function ymdCompact(dateStr){ return dateStr.replace(/-/g,''); }
+function weekStartOf(dateStr){
+  var dow = parseDate(dateStr).getDay();
+  return addDays(dateStr, dow===0 ? -6 : 1-dow);
+}
+function mealCacheKey(weekStart){ return 'meal:'+state.settings.neisSchul+':'+weekStart; }
+// NEIS DDISH_NM 예: "쌀밥<br/>된장국 (5.6.13.)<br/>제육볶음 (5.6.10.13.)"
+function parseDishes(raw){
+  return String(raw||'').split(/<br\s*\/?>/i).map(function(s){
+    s = s.trim();
+    var m = s.match(/\(([\d.\s]+)\)\s*$/);
+    var allergies = m ? m[1].split('.').map(function(x){ return parseInt(x,10); }).filter(function(x){ return x>0; }) : [];
+    var name = (m ? s.slice(0, m.index) : s).replace(/[*#]/g,'').replace(/\s{2,}/g,' ').trim(); // 학교마다 붙이는 * # 표시는 지운다
+    return { name:name, allergies:allergies };
+  }).filter(function(d){ return d.name; });
+}
+function fetchMealWeek(weekStart){
+  var url = 'https://open.neis.go.kr/hub/mealServiceDietInfo?KEY='+encodeURIComponent(NEIS_KEY)+
+    '&Type=json&pIndex=1&pSize=100&ATPT_OFCDC_SC_CODE='+encodeURIComponent(state.settings.neisOfcdc)+
+    '&SD_SCHUL_CODE='+encodeURIComponent(state.settings.neisSchul)+
+    '&MLSV_FROM_YMD='+ymdCompact(weekStart)+'&MLSV_TO_YMD='+ymdCompact(addDays(weekStart, 6));
+  return fetch(url).then(function(r){ return r.json(); }).then(function(data){
+    var days = {};
+    var rows = (data.mealServiceDietInfo && data.mealServiceDietInfo[1] && data.mealServiceDietInfo[1].row) || [];
+    rows.forEach(function(r){
+      var ds = r.MLSV_YMD.slice(0,4)+'-'+r.MLSV_YMD.slice(4,6)+'-'+r.MLSV_YMD.slice(6,8);
+      (days[ds] = days[ds] || []).push({ type:r.MMEAL_SC_NM||'급식', dishes:parseDishes(r.DDISH_NM), cal:r.CAL_INFO||'' });
+    });
+    // 데이터가 없는 주(방학 등)는 RESULT INFO-200으로 온다. 이것도 '없음'으로 저장해서 다시 부르지 않는다.
+    if(!rows.length && data.RESULT && data.RESULT.CODE!=='INFO-200') throw new Error(data.RESULT.MESSAGE||'급식 조회 실패');
+    var entry = { fetchedOn: todayStr(), days: days };
+    mealMem[weekStart] = entry;
+    saveJSON(mealCacheKey(weekStart), entry);
+    return entry;
+  });
+}
+function loadMealDay(dateStr){
+  var ws = weekStartOf(dateStr);
+  var mem = mealMem[ws];
+  var ready = mem ? Promise.resolve(mem) : loadJSON(mealCacheKey(ws), null);
+  return ready.then(function(entry){
+    if(entry){ mealMem[ws] = entry; }
+    // 오늘 이미 받은 주는 다시 부르지 않는다. 지난 주는 바뀔 일이 없으니 한 번 받았으면 그대로 쓴다.
+    var fresh = entry && (entry.fetchedOn===todayStr() || addDays(ws, 6) < todayStr());
+    if(fresh) return entry;
+    return fetchMealWeek(ws).catch(function(err){
+      if(entry) return entry; // 오프라인 등으로 실패하면 예전에 받아둔 걸 보여준다
+      throw err;
+    });
+  }).then(function(entry){ return entry.days[dateStr] || []; });
+}
+function mealCardShellHtml(dateStr){
+  return '<div class="meal-card'+(state.uiMealOpen?' open':'')+'" id="mealCard">'+
+    '<button class="meal-head" id="mealHead" aria-expanded="'+(state.uiMealOpen?'true':'false')+'">'+
+      '<span class="meal-ico">'+MEAL_ICON_SVG+'</span>'+
+      '<span class="meal-head-text"><span class="meal-title">'+(dateStr===todayStr()?'오늘 급식':niceDate(dateStr)+' 급식')+'</span>'+
+      '<span class="meal-summary" id="mealSummary">불러오는 중...</span></span>'+
+      '<span class="meal-chev">›</span></button>'+
+    '<div class="meal-body" id="mealBody"></div></div>';
+}
+function fillMealCard(dateStr){
+  var card = document.getElementById('mealCard');
+  if(!card) return;
+  document.getElementById('mealHead').addEventListener('click', function(){
+    state.uiMealOpen = !state.uiMealOpen;
+    card.classList.toggle('open', state.uiMealOpen);
+    this.setAttribute('aria-expanded', state.uiMealOpen?'true':'false');
+  });
+  loadMealDay(dateStr).then(function(meals){
+    if(state.currentDate!==dateStr || !document.getElementById('mealCard')) return; // 그사이 날짜를 바꿨으면 무시
+    var summaryEl = document.getElementById('mealSummary'), bodyEl = document.getElementById('mealBody');
+    if(!meals.length){
+      summaryEl.textContent = '이 날은 급식 정보가 없어요';
+      card.classList.add('empty');
+      return;
+    }
+    var lunch = meals.find(function(m){ return m.type==='중식'; }) || meals[0];
+    summaryEl.textContent = lunch.dishes.map(function(d){ return d.name; }).join(' · ');
+    var usedAllergies = {};
+    bodyEl.innerHTML = meals.map(function(m){
+      return '<div class="meal-block">'+
+        (meals.length>1 ? '<div class="meal-type">'+escapeHtml(m.type)+'</div>' : '')+
+        '<ul class="meal-list">'+m.dishes.map(function(d){
+          d.allergies.forEach(function(a){ usedAllergies[a] = true; });
+          return '<li>'+escapeHtml(d.name)+(d.allergies.length?'<span class="meal-alg">'+d.allergies.join('.')+'</span>':'')+'</li>';
+        }).join('')+'</ul>'+
+        (m.cal ? '<div class="meal-cal">'+escapeHtml(m.cal)+'</div>' : '')+
+      '</div>';
+    }).join('')+
+    (Object.keys(usedAllergies).length ? '<div class="meal-legend">알레르기: '+Object.keys(usedAllergies).map(Number).sort(function(a,b){return a-b;})
+      .map(function(n){ return n+'.'+(ALLERGY_NAMES[n-1]||''); }).join(' ')+'</div>' : '')+
+    '<div class="meal-source">출처: 나이스 교육정보 개방 포털</div>';
+  }).catch(function(err){
+    console.error('급식 불러오기 실패', err);
+    var summaryEl = document.getElementById('mealSummary');
+    if(summaryEl) summaryEl.textContent = isOfflineError(err) ? '인터넷 연결을 확인해주세요' : '급식을 불러오지 못했어요';
+    if(card) card.classList.add('empty');
   });
 }
 
@@ -5728,7 +5937,19 @@ function buildNotifPlan(now){
   }
   classItems = classItems.filter(function(n){ return n.at > now; })
     .sort(function(a,b){ return a.at-b.at; })
-    .slice(0, NOTIF_MAX_PENDING-1); // 한 자리는 월요일 리포트용으로 남겨둔다
+    .slice(0, NOTIF_MAX_PENDING-8); // 월요일 리포트 1자리 + 급식 알림 최대 7자리를 남겨둔다
+  // 실험실 급식 알림: 수업 있는 날 11:30에 그날 점심 메뉴. 메뉴를 미리 받아둔 날만 예약한다. (syncNotifications에서 미리 받아둠)
+  if(mealNotifOn()){
+    for(var mi=0; mi<7; mi++){
+      var mdStr = addDays(today, mi);
+      var mAt = dateTimeMs(mdStr, MEAL_NOTIF_TIME);
+      if(mAt <= now || dayStatus(mdStr)!=='school') continue;
+      var lunch = mealLunchSync(mdStr);
+      if(!lunch) continue;
+      classItems.push({ key:'meal:'+mdStr, kind:'meal', at:mAt, date:mdStr, period:null,
+        title:'오늘의 급식', body:lunch.dishes.map(function(x){ return x.name; }).join(' · ') });
+    }
+  }
   if(ns.weeklyReport){
     for(var k=0; k<8; k++){
       var md = addDays(today, k);
@@ -5760,7 +5981,74 @@ function saveNotifState(){
   saveJSON('notif:scheduled', notifState.scheduled);
   return saveJSON('notif:inbox', notifState.inbox);
 }
+// ---------- 홈 화면 위젯 데이터 (안드로이드 · iOS) ----------
+// 앞으로 2주 치 수업(교시 시각·반·지난 진도·기록 여부)과 급식을 JSON 하나로 만들어 네이티브 위젯에 넘긴다.
+// 위젯은 이 데이터만 보고 그리며, 교시가 바뀌는 시각마다 스스로 다시 그린다. (앱을 안 열어도 '다음 수업'이 넘어감)
+var widgetPluginRef = null;
+var widgetSyncTimer = null;
+function getWidgetPlugin(){
+  if(widgetPluginRef!==null) return widgetPluginRef;
+  widgetPluginRef = false;
+  try{
+    var C = window.Capacitor;
+    if(isNativeApp() && C && typeof C.registerPlugin==='function'){
+      widgetPluginRef = C.registerPlugin('WidgetBridge');
+    }
+  }catch(e){}
+  return widgetPluginRef;
+}
+function scheduleWidgetSync(){
+  if(!getWidgetPlugin() || !state.settings) return;
+  clearTimeout(widgetSyncTimer);
+  widgetSyncTimer = setTimeout(syncWidgetData, 1000);
+}
+function lastProgressShort(classId, dateStr){
+  var last = lastProgressAsOf(classId, dateStr);
+  if(!last) return '';
+  var idx = (state.plans[classId] || []).indexOf(last);
+  return (idx!==-1 ? (idx+1)+'. ' : '')+last.title+(last.donePage ? ' ('+last.donePage+')' : '');
+}
+function buildWidgetData(){
+  var today = todayStr();
+  var periods = [], days = {}, meals = {};
+  for(var i=0; i<14; i++){
+    var d = addDays(today, i);
+    var st = dayStatus(d);
+    days[d] = { label: niceDate(d)+' '+dayKorOf(d)+'요일', short: (parseDate(d).getMonth()+1)+'/'+parseDate(d).getDate()+' ('+dayKorOf(d)+')', status: st };
+    if(st!=='school') continue;
+    scheduleFor(d).forEach(function(s){
+      var cls = getClass(s.classId);
+      if(!cls || findBlockingExam(d, s.classId, s.period)) return;
+      var pt = computePeriodTime(s.period-1);
+      periods.push({ date:d, period:s.period, start:dateTimeMs(d, pt.start), end:dateTimeMs(d, pt.end),
+        startText:pt.start, endText:pt.end, className:cls.name, color:cls.color,
+        lastProgress:lastProgressShort(s.classId, d), done:isRecordDone(findRecord(d, s.period)) });
+    });
+  }
+  periods.sort(function(a,b){ return a.start-b.start; });
+  var mealEnabled = !!(state.settings.labMeal && state.settings.neisSchul);
+  if(mealEnabled){
+    for(var j=0; j<14; j++){
+      var md = addDays(today, j), lunch = mealLunchSync(md);
+      if(lunch) meals[md] = { dishes: lunch.dishes.map(function(x){ return x.name; }), cal: lunch.cal||'' };
+    }
+  }
+  return { updatedAt:Date.now(), today:today, periods:periods, days:days, mealEnabled:mealEnabled, meals:meals };
+}
+function syncWidgetData(){
+  var plugin = getWidgetPlugin();
+  if(!plugin) return Promise.resolve();
+  var today = todayStr();
+  var mealPrefetch = (state.settings.labMeal && state.settings.neisSchul)
+    ? Promise.all([ loadMealDay(today), loadMealDay(addDays(today, 7)) ]).catch(function(){})
+    : Promise.resolve();
+  return Promise.all([ ensureMonth(ymOf(today)), ensureMonth(ymOf(addDays(today, 13))), mealPrefetch ]).then(function(){
+    return plugin.setData({ json: JSON.stringify(buildWidgetData()) });
+  }).catch(function(e){ console.error('위젯 데이터 전달 실패', e); });
+}
+
 function scheduleNotifSync(){
+  scheduleWidgetSync(); // 알림 예약이 바뀌는 때(기록 저장·설정 변경·앱 복귀)는 위젯 내용도 바뀌는 때다
   if(!notifState.ready) return;
   clearTimeout(notifSyncTimer);
   notifSyncTimer = setTimeout(syncNotifications, 800);
@@ -5768,7 +6056,11 @@ function scheduleNotifSync(){
 function syncNotifications(){
   var now = Date.now();
   var today = todayStr();
-  return Promise.all([ ensureMonth(ymOf(today)), ensureMonth(ymOf(addDays(today, 6))) ]).then(function(){
+  // 급식 알림이 켜져 있으면 이번 주·다음 주 급식을 먼저 받아둔다. (실패해도 수업 알림 예약은 계속한다)
+  var mealPrefetch = mealNotifOn()
+    ? Promise.all([ loadMealDay(today), loadMealDay(addDays(today, 7)) ]).catch(function(){})
+    : Promise.resolve();
+  return Promise.all([ ensureMonth(ymOf(today)), ensureMonth(ymOf(addDays(today, 6))), mealPrefetch ]).then(function(){
     moveDueToInbox(now);
     notifState.scheduled = buildNotifPlan(now);
     saveNotifState();
@@ -5818,6 +6110,7 @@ function openNotifTarget(item){
     return;
   }
   if(!item.date) return;
+  if(item.kind==='meal') state.uiMealOpen = true; // 급식 알림은 오늘 탭 급식 카드를 펼쳐서 보여준다
   if(state.currentView!=='today') switchView('today');
   state.currentDate = item.date;
   goToDate(item.date);
@@ -5891,6 +6184,7 @@ function notifTimeLabel(at){
   return niceDate(ds)+' '+hm;
 }
 var NOTIF_ICONS = {
+  meal:MEAL_ICON_SVG.replace(/width="\d+" height="\d+"/, 'width="18" height="18"'),
   beforeClass:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>',
   unrecorded:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="M13.5 6.5l4 4"></path></svg>',
   weeklyReport:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M8 17V11"></path><path d="M12 17V7"></path><path d="M16 17v-4"></path></svg>'
@@ -6072,6 +6366,7 @@ function init(){
     maybeShowWeeklyReport();
     cleanupExpiredTransfers();
     initNotifications();
+    scheduleWidgetSync();
     if(state.settings.onboardingDone && state.currentView==='today') maybeShowCoachmark(1);
     hideSplash();
   }).catch(function(e){
