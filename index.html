@@ -2250,7 +2250,8 @@ function renderToday(){
   var setup = setupProgress();
   if(!setup.complete) html += setupChecklistHtml(setup);
   // 실험실 '우리학교 급식': 평일이고 학교가 정해져 있을 때만, 날짜 바로 아래에 접힌 카드로 보여준다. (내용은 비동기로 채움)
-  var showMeal = !!(state.settings.labMeal && state.settings.neisSchul && DAYS.indexOf(dayKorOf(d))!==-1);
+  // '오늘 탭에 보여주기'를 끄면 급식은 위젯·알림에만 쓰고 여기엔 안 보여준다.
+  var showMeal = !!(state.settings.labMeal && state.settings.neisSchul && state.settings.labMealToday!==false && DAYS.indexOf(dayKorOf(d))!==-1);
   if(showMeal) html += mealCardShellHtml(d);
   if(!setup.classes || !setup.timetable){
     // 반이나 시간표가 비어 있으면 아래 '수업 없는 날' 같은 안내가 헷갈리므로 시작하기 카드만 보여준다.
@@ -3752,9 +3753,14 @@ function renderSettingsLab(body){
   var hasSchool = !!(state.settings.neisOfcdc && state.settings.neisSchul);
   var html = '<p class="small-note" style="margin-top:0;">아직 다듬는 중인 기능이에요. 써보시고 불편한 점은 피드백으로 알려주세요.</p>';
   html += '<div class="fontsize-control ntf-row"><div><div class="fs-label">우리학교 급식</div>'+
-    '<div class="ntf-row-desc">나이스에서 급식을 불러와 오늘 탭에 보여줘요</div></div>'+
+    '<div class="ntf-row-desc">나이스에서 급식을 불러와 오늘 탭 · 알림 · 홈 화면 위젯에 보여줘요</div></div>'+
     '<button class="ntf-switch'+(on?' on':'')+'" id="labMealSwitch" role="switch" aria-checked="'+(on?'true':'false')+'" aria-label="우리학교 급식"></button></div>';
   if(on && hasSchool){
+    // 위젯으로만 급식을 보고 싶은 사람을 위해 오늘 탭 카드는 따로 끌 수 있게 한다.
+    var todayOn = state.settings.labMealToday!==false;
+    html += '<div class="fontsize-control ntf-row"><div><div class="fs-label">오늘 탭에 보여주기</div>'+
+      '<div class="ntf-row-desc">꺼도 급식 알림과 홈 화면 위젯에는 계속 나와요</div></div>'+
+      '<button class="ntf-switch'+(todayOn?' on':'')+'" id="labMealTodaySwitch" role="switch" aria-checked="'+(todayOn?'true':'false')+'" aria-label="오늘 탭에 급식 보여주기"></button></div>';
     var notifOn = mealNotifOn();
     html += '<div class="fontsize-control ntf-row"><div><div class="fs-label">급식 알림</div>'+
       '<div class="ntf-row-desc">수업 있는 날 '+MEAL_NOTIF_TIME+'에 오늘 점심 메뉴를 알려드려요</div></div>'+
@@ -3790,6 +3796,11 @@ function renderSettingsLab(body){
     widgetRefreshBtn.disabled = true;
     widgetRefreshBtn.textContent = '보내는 중…';
     syncWidgetData().then(function(){ renderSettingsLab(body); });
+  });
+  var mealTodaySwitch = document.getElementById('labMealTodaySwitch');
+  if(mealTodaySwitch) mealTodaySwitch.addEventListener('click', function(){
+    state.settings.labMealToday = state.settings.labMealToday===false;
+    saveSettings().then(function(){ renderSettingsLab(body); flashSaved(); });
   });
   var mealNotifSwitch = document.getElementById('labMealNotifSwitch');
   if(mealNotifSwitch) mealNotifSwitch.addEventListener('click', function(){
