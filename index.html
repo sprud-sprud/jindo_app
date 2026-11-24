@@ -1233,7 +1233,7 @@ function escapeHtml(s){
 function defaultSettings(){
   var schedule = {};
   DAYS.forEach(function(d){ schedule[d] = new Array(7).fill(null); });
-  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisOfcdc:'', neisSchul:'', neisSchoolName:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00', lunchAfterPeriod:4, lunchDuration:50, cleaningAfterPeriod:0, cleaningDuration:20, onboardingDone:false, themeMode:'system', dayOverrides:{}, makeupClasses:[], isNewFeatureTutorialSeen:false };
+  return { classes: [], periodsPerDay: 7, schedule: schedule, exams: [], holidays: [], semesters: [], autoHolidaysEnabled: true, holidayExceptions: [], autoSuneungEnabled: true, customDdays: [], neisOfcdc:'', neisSchul:'', neisSchoolName:'', neisHolidays: [], fontScale: 1, schoolLevel:'high', classDuration:50, breakDuration:10, firstPeriodStart:'09:00', lunchAfterPeriod:4, lunchDuration:50, cleaningAfterPeriod:0, cleaningDuration:20, onboardingDone:false, themeMode:'system', dayOverrides:{}, makeupClasses:[], periodSwaps:[], isNewFeatureTutorialSeen:false };
 }
 var SCHOOL_LEVEL_DURATION = { elementary:40, middle:45, high:50 };
 function computePeriodTime(periodIndex){
@@ -1522,15 +1522,44 @@ function effectiveDayKor(dateStr){
   var override = state.settings.dayOverrides && state.settings.dayOverrides[dateStr];
   return override || dayKorOf(dateStr);
 }
+// 요일 교체까지만 반영한 그날의 기본 시간표 (일회성 수업 교체·보강은 아직 반영 전)
+function baseClassAt(dateStr, period){
+  var dk = effectiveDayKor(dateStr);
+  if(DAYS.indexOf(dk) === -1) return null;
+  return (state.settings.schedule[dk] || [])[period-1] || null;
+}
+// 이 날짜·교시가 일회성 수업 교체(periodSwaps)에 걸려 있으면 그 교체 정보를 돌려준다.
+function findSwapForSlot(dateStr, period){
+  return (state.settings.periodSwaps||[]).find(function(sw){
+    return (sw.a.date===dateStr && sw.a.period===period) || (sw.b.date===dateStr && sw.b.period===period);
+  }) || null;
+}
 function scheduleFor(dateStr){
   var dk = effectiveDayKor(dateStr);
-  var out = [];
+  var slots = {};
   if(DAYS.indexOf(dk) !== -1){
     var arr = state.settings.schedule[dk] || [];
     arr.forEach(function(classId, i){
-      if(classId) out.push({ period:i+1, classId:classId });
+      if(classId) slots[i+1] = { period:i+1, classId:classId };
     });
   }
+  // 일회성 수업 교체: 교체된 교시에는 상대편 날짜·교시의 원래 수업이 들어온다 (상대가 빈 교시면 그 교시는 비게 된다)
+  (state.settings.periodSwaps||[]).forEach(function(sw){
+    if(sw.mode === 'take'){
+      // 내 수업은 다른 선생님께 넘기고, 상대 교시에서는 내가 다른 반 수업을 맡는 경우
+      if(sw.a.date === dateStr) delete slots[sw.a.period];
+      if(sw.b.date === dateStr && sw.takeClassId) slots[sw.b.period] = { period:sw.b.period, classId:sw.takeClassId, isSwap:true, swapId:sw.id };
+      return;
+    }
+    [[sw.a, sw.b], [sw.b, sw.a]].forEach(function(pair){
+      var mine = pair[0], other = pair[1];
+      if(mine.date !== dateStr) return;
+      var incoming = baseClassAt(other.date, other.period);
+      if(incoming) slots[mine.period] = { period:mine.period, classId:incoming, isSwap:true, swapId:sw.id };
+      else delete slots[mine.period];
+    });
+  });
+  var out = Object.keys(slots).map(function(p){ return slots[p]; });
   // 실보강으로 이 날짜/교시에 따로 잡아둔 보강 수업도 그날 시간표에 합쳐서 보여준다.
   (state.settings.makeupClasses||[]).forEach(function(mc){
     if(mc.date===dateStr) out.push({ period:mc.period, classId:mc.classId, isMakeup:true, makeupId:mc.id });
@@ -2514,6 +2543,7 @@ function renderDayCard(dateStr, period, classId, isFocus, isMakeup){
   var mainItemId = recMainItemId(rec);
   var extraItems = recExtraItems(rec);
   var makeupBadge = isMakeup ? '<span class="stamp" style="background:var(--gray-100);color:var(--gray-700);">보강</span>' : '';
+  if(!isMakeup && findSwapForSlot(dateStr, period)) makeupBadge = '<span class="stamp" style="background:var(--gray-100);color:var(--gray-700);">교체</span>';
 
   if(rec.excused){
     var reasonLabel = rec.reason || '개인 사정';
@@ -2595,6 +2625,7 @@ function renderDayCard(dateStr, period, classId, isFocus, isMakeup){
     '<div class="memo-wrap" id="'+excuseWrapId+'"><div class="excuse-toggle-row">'+
       EXCUSE_REASONS.map(function(r){ return '<span class="excuse-btn" data-reason="'+r+'">'+r+'</span>'; }).join('')+
     '</div></div>'+
+    (isMakeup ? '' : '<div class="quick-add-btn ghost-text swap-open-btn">이 수업, 다른 날짜·교시 수업과 교체하기</div>')+
   '</div>';
 }
 
@@ -2771,6 +2802,8 @@ function bindOneCard(card, dateStr, isFocus, isMakeup){
       openAbsenceConfirmModal(reason, classId, dateStr, period);
     });
   });
+  var swapBtn = card.querySelector('.swap-open-btn');
+  if(swapBtn) swapBtn.addEventListener('click', function(){ openPeriodSwapModal({ date:dateStr, period:period }); });
 }
 
 // '결강 처리' 누르면 바로 확정하지 않고, 실제로 보강을 잡을지부터 물어본다.
@@ -2832,6 +2865,176 @@ function openDayOverrideModal(){
       overlay.remove();
       if(state.currentView==='today') renderToday();
       flashSaved();
+    });
+  });
+}
+
+// 일회성 수업 교체: 특정 날짜·교시의 수업과 다른 날짜·교시의 수업을 딱 한 번 맞바꾼다.
+// (상대 교시가 비어 있으면 수업이 그 교시로 옮겨간다.) 매주 반복되는 시간표는 그대로 두고,
+// 교체 내역만 settings.periodSwaps에 따로 적어두며 scheduleFor()가 그날 시간표에 반영한다.
+function openPeriodSwapModal(prefill){
+  prefill = prefill || {};
+  var n = state.settings.periodsPerDay || 7;
+  function slotHasRecord(dateStr, period){
+    return getRecords(dateStr).some(function(r){
+      return r.period===period && !!(r.excused || r.saved || r.itemId || r.memo || r.presenter || (r.extraItems && r.extraItems.length));
+    });
+  }
+  function slotBlockReason(dateStr, period){
+    if(findSwapForSlot(dateStr, period)) return '이미 교체됨';
+    if((state.settings.makeupClasses||[]).some(function(mc){ return mc.date===dateStr && mc.period===period; })) return '보강 있음';
+    return '';
+  }
+  function slotName(dateStr, period){
+    var cid = baseClassAt(dateStr, period);
+    var c = cid ? getClass(cid) : null;
+    return c ? c.name : '내 수업 없음';
+  }
+  function slotText(s){
+    return niceDate(s.date)+'('+dayKorOf(s.date)+') '+s.period+'교시 '+slotName(s.date, s.period);
+  }
+  function periodOptions(dateVal, selected){
+    var html = '';
+    for(var p=1; p<=n; p++){
+      var why = dateVal ? slotBlockReason(dateVal, p) : '';
+      var label = p+'교시 · '+(dateVal ? slotName(dateVal, p) : '-')+(why ? ' ('+why+')' : '');
+      html += '<option value="'+p+'"'+(why?' disabled':'')+((!why && p===selected)?' selected':'')+'>'+escapeHtml(label)+'</option>';
+    }
+    return html;
+  }
+
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  var dateA = prefill.date || todayStr();
+  var dateB = addDays(dateA, 1);
+  overlay.innerHTML = '<div class="modal-box">'+
+    '<h3>일회성 수업 교체</h3>'+
+    '<p class="small-note" id="swapIntro" style="margin:0 0 12px;"></p>'+
+    '<div class="field-row"><label>어떤 경우예요?</label><select id="swapMode">'+
+      '<option value="swap">내 수업 시간을 옮기거나 바꿔요</option>'+
+      '<option value="take">다른 선생님과 맞교대했어요</option>'+
+    '</select></div>'+
+    '<div class="field-row"><label id="swapLabelA"></label><input type="date" id="swapDateA" value="'+dateA+'"></div>'+
+    '<div class="field-row"><select id="swapPeriodA"></select></div>'+
+    '<div class="field-row"><label id="swapLabelB"></label><input type="date" id="swapDateB" value="'+dateB+'"></div>'+
+    '<div class="field-row"><select id="swapPeriodB"></select></div>'+
+    '<div class="field-row" id="swapTakeRow" style="display:none;"><label>그 시간에 내가 들어갈 반</label><select id="swapTakeClass">'+
+      state.settings.classes.map(function(c){ return '<option value="'+c.id+'">'+escapeHtml(c.name)+'</option>'; }).join('')+
+    '</select></div>'+
+    '<p class="small-note" id="swapPreview" style="margin:-2px 0 10px;"></p>'+
+    '<div class="modal-actions"><button class="btn ghost small" id="swapCancel">닫기</button><button class="btn small" id="swapSave">교체하기</button></div>'+
+    '<div id="swapListBox"></div>'+
+  '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector('#swapCancel').addEventListener('click', function(){ overlay.remove(); });
+
+  function side(key){
+    return { date: document.getElementById('swapDate'+key).value, period: parseInt(document.getElementById('swapPeriod'+key).value, 10) };
+  }
+  function isTake(){ return document.getElementById('swapMode').value === 'take'; }
+  // 교체 내역 한 건을 두 줄 문장으로: 서로 바꾸기는 '↔', 다른 반 맡기는 '→'
+  function swapLines(sw){
+    if(sw.mode === 'take'){
+      var tc = getClass(sw.takeClassId);
+      return [slotText(sw.a)+' 수업을 맡김',
+        '→ '+niceDate(sw.b.date)+'('+dayKorOf(sw.b.date)+') '+sw.b.period+'교시 '+(tc ? tc.name : '?')+' 수업에 들어감'];
+    }
+    return [slotText(sw.a), '↔ '+slotText(sw.b)];
+  }
+  function refreshPreview(){
+    var a = side('A'), b = side('B');
+    var el = document.getElementById('swapPreview');
+    document.getElementById('swapTakeRow').style.display = isTake() ? '' : 'none';
+    document.getElementById('swapIntro').textContent = isTake()
+      ? '다른 선생님과 수업을 맞교대했을 때 써요. 내 수업은 그 선생님이 하고, 나는 그 선생님 시간에 다른 반 수업에 들어가요. 고른 날짜에만 적용되고, 다른 주 시간표는 그대로예요.'
+      : '내 수업의 시간을 옮기거나, 내 수업 두 개의 시간을 서로 바꿔요. 고른 날짜에만 적용되고, 다른 주 시간표는 그대로예요.';
+    document.getElementById('swapLabelA').textContent = isTake() ? '다른 선생님께 맡길 내 수업' : '옮기거나 바꿀 내 수업';
+    document.getElementById('swapLabelB').textContent = isTake()
+      ? '대신 내가 들어갈 시간 (「내 수업 없음」 시간을 고르세요)'
+      : '어느 시간으로? (비어 있는 시간은 「내 수업 없음」)';
+    if(!(a.date && b.date && a.period && b.period)){ el.textContent = ''; return; }
+    if(isTake()){
+      var tc = getClass(document.getElementById('swapTakeClass').value);
+      el.textContent = swapLines({ mode:'take', a:a, b:b, takeClassId: tc ? tc.id : '' }).join('  ');
+    } else {
+      el.textContent = slotText(a)+'  ↔  '+slotText(b);
+    }
+  }
+  function refreshOptions(){
+    var selA = parseInt(document.getElementById('swapPeriodA').value, 10) || prefill.period || 1;
+    var selB = parseInt(document.getElementById('swapPeriodB').value, 10) || 1;
+    document.getElementById('swapPeriodA').innerHTML = periodOptions(document.getElementById('swapDateA').value, selA);
+    document.getElementById('swapPeriodB').innerHTML = periodOptions(document.getElementById('swapDateB').value, selB);
+    refreshPreview();
+  }
+  function afterChange(){
+    refreshOptions();
+    renderList();
+    if(state.currentView==='today') renderToday();
+    flashSaved();
+  }
+  function renderList(){
+    var cutoff = addDays(todayStr(), -14);
+    var list = (state.settings.periodSwaps||[]).filter(function(sw){
+      return sw.a.date >= cutoff || sw.b.date >= cutoff;
+    }).sort(function(x, y){ return x.a.date < y.a.date ? -1 : 1; });
+    var box = document.getElementById('swapListBox');
+    if(!list.length){ box.innerHTML = ''; return; }
+    box.innerHTML = '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);">'+
+      '<div class="small-note" style="font-weight:700;margin-bottom:6px;">교체 내역</div>'+
+      list.map(function(sw){
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+          '<div class="small-note" style="flex:1;margin:0;">'+swapLines(sw).map(escapeHtml).join('<br>')+'</div>'+
+          '<button class="btn ghost small" data-undo="'+sw.id+'">되돌리기</button></div>';
+      }).join('')+'</div>';
+    box.querySelectorAll('[data-undo]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-undo');
+        var sw = state.settings.periodSwaps.find(function(x){ return x.id===id; });
+        if(!sw) return;
+        Promise.all([ensureMonth(ymOf(sw.a.date)), ensureMonth(ymOf(sw.b.date))]).then(function(){
+          var hasRec = slotHasRecord(sw.a.date, sw.a.period) || slotHasRecord(sw.b.date, sw.b.period);
+          if(hasRec && !confirm('교체된 교시에 이미 기록이 있어요. 되돌리면 그 기록이 원래 시간표에서는 보이지 않을 수 있어요. 그래도 되돌릴까요?')) return;
+          state.settings.periodSwaps = state.settings.periodSwaps.filter(function(x){ return x.id!==id; });
+          saveSettings().then(afterChange);
+        });
+      });
+    });
+  }
+  refreshOptions();
+  renderList();
+  ['swapMode','swapDateA','swapDateB','swapPeriodA','swapPeriodB','swapTakeClass'].forEach(function(id){
+    document.getElementById(id).addEventListener('change', function(){
+      if(id==='swapDateA' || id==='swapDateB') refreshOptions(); else refreshPreview();
+    });
+  });
+
+  overlay.querySelector('#swapSave').addEventListener('click', function(){
+    var a = side('A'), b = side('B');
+    if(!a.date || !b.date || !a.period || !b.period){ alert('날짜와 교시를 모두 선택해주세요.'); return; }
+    if(a.date===b.date && a.period===b.period){ alert('서로 다른 교시를 골라주세요.'); return; }
+    if(slotBlockReason(a.date, a.period) || slotBlockReason(b.date, b.period)){ alert('이미 교체되었거나 보강이 잡힌 교시는 고를 수 없어요.'); return; }
+    var ca = baseClassAt(a.date, a.period), cb = baseClassAt(b.date, b.period);
+    var take = isTake();
+    var takeClassId = take ? document.getElementById('swapTakeClass').value : '';
+    if(take){
+      if(!ca){ alert('넘길 내 수업이 있는 교시를 골라주세요.'); return; }
+      if(cb){ alert('상대 교시에 이미 내 수업이 있어요. 「내 수업 없음」 교시를 골라주세요.'); return; }
+      if(!takeClassId){ alert('상대 교시에서 맡을 반을 골라주세요. 반이 없으면 설정에서 먼저 추가해주세요.'); return; }
+    } else {
+      if(!ca && !cb){ alert('두 교시 모두 수업이 없어요. 수업이 있는 교시를 하나 이상 골라주세요.'); return; }
+      if(ca && ca===cb){ alert('같은 반 수업끼리는 교체해도 달라지는 게 없어요.'); return; }
+    }
+    Promise.all([ensureMonth(ymOf(a.date)), ensureMonth(ymOf(b.date))]).then(function(){
+      if(slotHasRecord(a.date, a.period) || slotHasRecord(b.date, b.period)){
+        alert('이미 기록이 있는 교시는 교체할 수 없어요. 기록을 먼저 취소하고 다시 시도해주세요.');
+        return;
+      }
+      var sw = { id:uid(), a:a, b:b };
+      if(take){ sw.mode = 'take'; sw.takeClassId = takeClassId; }
+      state.settings.periodSwaps.push(sw);
+      saveSettings().then(afterChange);
     });
   });
 }
@@ -4282,6 +4485,13 @@ function renderSettingsTimetable(body){
     extraRow.innerHTML = '<div class="grow"><div class="smr-title">일회성 요일 변경</div>'+
       '<div class="smr-sub">특정 날짜 하루만 다른 요일 시간표 적용</div></div><span class="smr-arrow">›</span>';
     extraRow.addEventListener('click', function(){ openDayOverrideModal(); });
+    var swapRow = document.createElement('div');
+    swapRow.className = 'settings-menu-row';
+    swapRow.style.marginTop = '10px';
+    swapRow.innerHTML = '<div class="grow"><div class="smr-title">일회성 수업 교체</div>'+
+      '<div class="smr-sub">특정 날짜·교시 수업을 다른 날짜·교시 수업과 한 번만 교체</div></div><span class="smr-arrow">›</span>';
+    swapRow.addEventListener('click', function(){ openPeriodSwapModal(); });
+    body.appendChild(swapRow);   // 수업 교체가 더 자주 쓰여서 요일 변경보다 위에 둔다
     body.appendChild(extraRow);
 
     var uploadSection = document.createElement('div');
@@ -6400,6 +6610,7 @@ function init(){
     if(!state.settings.themeMode) state.settings.themeMode = 'system';
     if(!state.settings.dayOverrides) state.settings.dayOverrides = {};
     if(!state.settings.makeupClasses) state.settings.makeupClasses = [];
+    if(!state.settings.periodSwaps) state.settings.periodSwaps = [];
     if(state.settings.isNewFeatureTutorialSeen===undefined) state.settings.isNewFeatureTutorialSeen = false;
     // 반 색상은 등록 순서가 아니라 '학년/반 이름' 순서 기준으로 배정한다.
     // (컴시간 불러오기처럼 여러 반이 한 번에 만들어질 때도 화면에 보이는 순서 그대로 색이 예쁘게 이어지도록)
