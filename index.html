@@ -823,7 +823,16 @@
     border-radius:8px;background:var(--coral-deep);color:#fff;
     font-size:0.625rem;font-weight:700;line-height:16px;text-align:center;
   }
-  /* 실험실 '우리학교 급식' 카드: 접힌 상태에선 메뉴 한 줄, 누르면 전체 메뉴·칼로리·알레르기 */
+  /* 우리반 시간표 (설정 > 우리학교) */
+  .hr-title{font-size:0.8125rem;font-weight:700;color:var(--ink);margin:12px 0 6px;}
+  .hr-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:3px;}
+  .hr-table th{font-size:0.75rem;font-weight:700;color:var(--ink-soft);padding:4px 0;border-radius:6px;}
+  .hr-table th.today{background:var(--coral);color:#fff;}
+  .hr-table th.hr-p{width:24px;}
+  .hr-table td{font-size:0.6875rem;font-weight:600;color:var(--ink);text-align:center;vertical-align:middle;line-height:1.3;height:36px;padding:3px 2px;border-radius:8px;background:var(--gray-100);word-break:break-all;overflow:hidden;}
+  .hr-table td.today{background:var(--coral-bg);}
+
+  /* 우리학교 급식 카드: 접힌 상태에선 메뉴 한 줄, 누르면 전체 메뉴·칼로리·알레르기 */
   .meal-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-soft);margin-bottom:14px;overflow:hidden;}
   .meal-head{
     display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;text-align:left;
@@ -3802,7 +3811,7 @@ function renderSettings(){
     renderSettingsLanding(el);
     return;
   }
-  var titles = { display:'화면 설정', schedule:'시간표 관리', calendar:'학사일정', plans:'진도계획', data:'데이터 관리', lab:'실험실' };
+  var titles = { display:'화면 설정', widget:'홈 화면 위젯', school:'우리학교', schedule:'시간표 관리', calendar:'학사일정', plans:'진도계획', data:'데이터 관리' };
   var html = '<div class="settings-back" id="settingsBackBtn">‹ 설정</div>';
   html += '<h1 style="margin:2px 0 16px;">'+titles[state.settingsTab]+'</h1>';
   html += '<div id="settingsBody"></div>';
@@ -3819,7 +3828,8 @@ function renderSettings(){
   else if(state.settingsTab==='calendar') renderSettingsCalendar(body);
   else if(state.settingsTab==='plans') renderSettingsPlans(body);
   else if(state.settingsTab==='data') renderSettingsData(body);
-  else if(state.settingsTab==='lab') renderSettingsLab(body);
+  else if(state.settingsTab==='school') renderSettingsSchool(body);
+  else if(state.settingsTab==='widget') renderSettingsWidget(body);
 }
 
 // '화면' 상세 화면: 글씨 크기 + 테마. 예전엔 설정 첫 화면에 항상 떠있던 걸 여기로 옮겼다.
@@ -3895,12 +3905,12 @@ function renderSettingsDisplay(body){
 // 설정 첫 화면: 한 번에 다 안 보여주고, 그룹별 목록만 먼저 보여준 다음 눌러야 세부 설정이 뜨게 한다.
 function renderSettingsLanding(el){
   probeConnectivity();
+  var screenItems = [['display','화면 설정','글씨 크기 · 테마 · 알림']];
+  if(isNativeApp()) screenItems.push(['widget','홈 화면 위젯','위젯 종류 · 추가 방법 · 새로고침']);
   var groups = [
-    { label:'화면', items:[
-      ['display','화면 설정','글씨 크기 · 테마 · 알림']
-    ]},
-    { label:'실험실', items:[
-      ['lab','실험실','미리 써보는 기능']
+    { label:'화면', items:screenItems },
+    { label:'우리학교', items:[
+      ['school','우리학교','우리반 시간표 · 급식']
     ]},
     { label:'수업 관리', items:[
       ['schedule','시간표 관리','반 목록 · 일과시간 · 내 시간표'],
@@ -3949,85 +3959,317 @@ function renderSettingsLanding(el){
   });
 }
 
-// ---------- 실험실 ----------
-// 정식 기능이 되기 전에 켜서 써보는 기능 모음. 지금은 '우리학교 급식' 하나.
-function renderSettingsLab(body){
-  var on = !!state.settings.labMeal;
-  var hasSchool = !!(state.settings.neisOfcdc && state.settings.neisSchul);
-  var html = '<p class="small-note" style="margin-top:0;">아직 다듬는 중인 기능이에요. 써보시고 불편한 점은 피드백으로 알려주세요.</p>';
-  html += '<div class="fontsize-control ntf-row"><div><div class="fs-label">우리학교 급식</div>'+
-    '<div class="ntf-row-desc">나이스에서 급식을 불러와 오늘 탭 · 알림 · 홈 화면 위젯에 보여줘요</div></div>'+
-    '<button class="ntf-switch'+(on?' on':'')+'" id="labMealSwitch" role="switch" aria-checked="'+(on?'true':'false')+'" aria-label="우리학교 급식"></button></div>';
-  if(on && hasSchool){
-    // 위젯으로만 급식을 보고 싶은 사람을 위해 오늘 탭 카드는 따로 끌 수 있게 한다.
-    var todayOn = state.settings.labMealToday!==false;
-    html += '<div class="fontsize-control ntf-row"><div><div class="fs-label">오늘 탭에 보여주기</div>'+
-      '<div class="ntf-row-desc">꺼도 급식 알림과 홈 화면 위젯에는 계속 나와요</div></div>'+
-      '<button class="ntf-switch'+(todayOn?' on':'')+'" id="labMealTodaySwitch" role="switch" aria-checked="'+(todayOn?'true':'false')+'" aria-label="오늘 탭에 급식 보여주기"></button></div>';
-    var notifOn = mealNotifOn();
-    html += '<div class="fontsize-control ntf-row"><div><div class="fs-label">급식 알림</div>'+
-      '<div class="ntf-row-desc">수업 있는 날 '+MEAL_NOTIF_TIME+'에 오늘 점심 메뉴를 알려드려요</div></div>'+
-      '<button class="ntf-switch'+(notifOn?' on':'')+'" id="labMealNotifSwitch" role="switch" aria-checked="'+(notifOn?'true':'false')+'" aria-label="급식 알림"></button></div>';
+// ---------- 우리학교 ----------
+// 학교 하나를 기준으로 하는 기능(우리반 시간표 · 급식)을 모아 둔 화면. 학교는 학사일정(나이스 불러오기)과도 같이 쓴다.
+// 급식 설정값 이름(labMeal…)은 실험실이던 때 그대로라서, 이미 켠 사람은 다시 설정할 필요가 없다.
+function hasNeisSchool(){ return !!(state.settings.neisOfcdc && state.settings.neisSchul); }
+function settingSwitchHtml(id, title, desc, on){
+  return '<div class="fontsize-control ntf-row"><div><div class="fs-label">'+title+'</div>'+
+    '<div class="ntf-row-desc">'+desc+'</div></div>'+
+    '<button class="ntf-switch'+(on?' on':'')+'" id="'+id+'" role="switch" aria-checked="'+(on?'true':'false')+'" aria-label="'+title+'"></button></div>';
+}
+function renderSettingsSchool(body){
+  var hasSchool = hasNeisSchool();
+  var html = '<div class="settings-section" style="margin-top:0;"><h3>학교</h3>';
+  if(hasSchool){
+    html += '<div class="list-row"><div class="grow">'+escapeHtml(state.settings.neisSchoolName||'선택된 학교')+'</div>'+
+      '<span id="schoolChange" style="font-size:0.75rem;color:var(--coral-deep);text-decoration:underline;cursor:pointer;">변경</span></div>'+
+      '<p class="small-note" style="margin-bottom:0;">우리반 시간표 · 급식 · 학사일정이 같은 학교를 써요.</p>';
+  } else {
+    html += '<p class="small-note" style="margin-top:0;">학교를 고르면 우리반 시간표와 급식을 볼 수 있어요.</p>'+
+      '<div class="add-row"><input type="text" id="neisSchoolSearch" placeholder="예: ㅇㅇ고등학교" style="flex:1;"><button class="btn ghost small" id="schoolSearchBtn">검색</button></div>'+
+      '<div id="neisSearchResults" style="margin-top:8px;"></div>';
   }
-  if(on){
-    html += '<div class="settings-section"><h3>학교</h3>';
-    if(hasSchool){
-      html += '<div class="list-row"><div class="grow">'+escapeHtml(state.settings.neisSchoolName||'선택된 학교')+'</div>'+
-        '<span id="labSchoolChange" style="font-size:0.75rem;color:var(--coral-deep);text-decoration:underline;cursor:pointer;">변경</span></div>'+
-        '<p class="small-note" style="margin-bottom:0;">학사일정(나이스 불러오기)과 같은 학교를 써요.</p>';
-    } else {
-      html += '<p class="small-note" style="margin-top:0;">급식을 불러올 학교를 검색해서 골라주세요.</p>'+
-        '<div class="add-row"><input type="text" id="neisSchoolSearch" placeholder="예: ㅇㅇ고등학교" style="flex:1;"><button class="btn ghost small" id="labSchoolSearchBtn">검색</button></div>'+
-        '<div id="neisSearchResults" style="margin-top:8px;"></div>';
+  html += '</div>';
+  if(hasSchool){
+    html += '<div class="settings-section"><h3>우리반 시간표</h3><div id="homeroomPick"></div><div id="homeroomView"></div></div>';
+    var mealOn = !!state.settings.labMeal;
+    html += '<div class="settings-section"><h3>급식</h3>'+
+      settingSwitchHtml('labMealSwitch', '급식 보기', '나이스에서 급식을 불러와 오늘 탭 · 알림 · 홈 화면 위젯에 보여줘요', mealOn);
+    if(mealOn){
+      // 위젯으로만 급식을 보고 싶은 사람을 위해 오늘 탭 카드는 따로 끌 수 있게 한다.
+      html += settingSwitchHtml('labMealTodaySwitch', '오늘 탭에 보여주기', '꺼도 급식 알림과 홈 화면 위젯에는 계속 나와요', state.settings.labMealToday!==false)+
+        settingSwitchHtml('labMealNotifSwitch', '급식 알림', '수업 있는 날 '+MEAL_NOTIF_TIME+'에 오늘 점심 메뉴를 알려드려요', mealNotifOn());
     }
     html += '</div>';
   }
-  // 홈 화면 위젯이 비어 있을 때 원인을 알 수 있게, 앱이 위젯에 마지막으로 데이터를 넘긴 결과를 작게 보여준다.
-  if(isNativeApp()){
-    var wl = null;
-    try{ wl = JSON.parse(localStorage.getItem(STORE_PREFIX+'widgetLast')||'null'); }catch(e){}
-    html += '<p class="small-note" id="widgetDiag">홈 화면 위젯: '+(wl ? (wl.ok ? escapeHtml(wl.at)+' 전달됨 ('+escapeHtml(wl.msg)+')' : escapeHtml(wl.at)+' · '+escapeHtml(wl.msg)) : '아직 전달 기록이 없어요')+'</p>'+
-      '<button class="btn ghost small" id="widgetRefreshBtn">위젯 지금 새로고침</button>';
-  }
   body.innerHTML = html;
-  document.getElementById('labMealSwitch').addEventListener('click', function(){
-    state.settings.labMeal = !state.settings.labMeal;
-    saveSettings().then(function(){ renderSettingsLab(body); flashSaved(); });
+
+  function rerender(){ renderSettingsSchool(body); }
+  function saveAndRerender(){ saveSettings().then(function(){ rerender(); flashSaved(); }); }
+  var changeBtn = document.getElementById('schoolChange');
+  if(changeBtn) changeBtn.addEventListener('click', function(){
+    state.settings.neisOfcdc = ''; state.settings.neisSchul = ''; state.settings.neisSchoolName = '';
+    saveSettings().then(rerender);
   });
-  var widgetRefreshBtn = document.getElementById('widgetRefreshBtn');
-  if(widgetRefreshBtn) widgetRefreshBtn.addEventListener('click', function(){
-    widgetRefreshBtn.disabled = true;
-    widgetRefreshBtn.textContent = '보내는 중…';
-    syncWidgetData().then(function(){ renderSettingsLab(body); });
+  var searchBtn = document.getElementById('schoolSearchBtn');
+  if(searchBtn){
+    var doSearch = function(){
+      searchNeisSchool(NEIS_KEY, document.getElementById('neisSchoolSearch').value.trim(), body, rerender);
+    };
+    searchBtn.addEventListener('click', doSearch);
+    document.getElementById('neisSchoolSearch').addEventListener('keydown', function(e){ if(e.key==='Enter') doSearch(); });
+  }
+  var mealSwitch = document.getElementById('labMealSwitch');
+  if(mealSwitch) mealSwitch.addEventListener('click', function(){
+    state.settings.labMeal = !state.settings.labMeal;
+    saveAndRerender();
   });
   var mealTodaySwitch = document.getElementById('labMealTodaySwitch');
   if(mealTodaySwitch) mealTodaySwitch.addEventListener('click', function(){
     state.settings.labMealToday = state.settings.labMealToday===false;
-    saveSettings().then(function(){ renderSettingsLab(body); flashSaved(); });
+    saveAndRerender();
   });
   var mealNotifSwitch = document.getElementById('labMealNotifSwitch');
   if(mealNotifSwitch) mealNotifSwitch.addEventListener('click', function(){
     var p;
     if(mealNotifOn()){ state.settings.labMealNotif = false; p = Promise.resolve(); }
     else { state.settings.labMealNotif = true; p = ensureNotifPermission(); } // 처음 켤 때 알림 권한을 묻는다
-    p.then(function(){ return saveSettings(); }).then(function(){ renderSettingsLab(body); flashSaved(); });
+    p.then(saveAndRerender);
   });
-  var changeBtn = document.getElementById('labSchoolChange');
-  if(changeBtn) changeBtn.addEventListener('click', function(){
-    state.settings.neisOfcdc = ''; state.settings.neisSchul = ''; state.settings.neisSchoolName = '';
-    saveSettings().then(function(){ renderSettingsLab(body); });
-  });
-  var searchBtn = document.getElementById('labSchoolSearchBtn');
-  if(searchBtn){
-    var doSearch = function(){
-      searchNeisSchool(NEIS_KEY, document.getElementById('neisSchoolSearch').value.trim(), body, function(){ renderSettingsLab(body); });
-    };
-    searchBtn.addEventListener('click', doSearch);
-    document.getElementById('neisSchoolSearch').addEventListener('keydown', function(e){ if(e.key==='Enter') doSearch(); });
+  if(hasSchool){
+    renderHomeroomPick(document.getElementById('homeroomPick'), document.getElementById('homeroomView'));
+    renderHomeroomView(document.getElementById('homeroomView'));
   }
 }
 
-// ---------- 우리학교 급식 (실험실) ----------
+// ---------- 우리반 시간표 ----------
+// 나이스 학급 시간표를 주 단위로 받아 기기에 저장한다. 과목명만 있고 선생님 이름은 없으며, 내 수업 시간표·진도와는 따로다.
+var homeroomMem = {};      // 캐시 키 -> { fetchedOn, days:{ 'YYYY-MM-DD': { '1':'국어' } } }
+var homeroomClassMem = {}; // 학교코드 -> { 학년: [반, …] }
+function homeroomSet(){
+  var s = state.settings;
+  return !!(s.neisSchul && s.homeroomSchul===s.neisSchul && s.homeroomGrade && s.homeroomClass);
+}
+function homeroomLabel(){
+  var cls = String(state.settings.homeroomClass);
+  return state.settings.homeroomGrade+'학년 '+cls+(/^\d+$/.test(cls) ? '반' : '');
+}
+// 토·일요일에는 다음 주를 보여준다 (위젯과 같은 기준)
+function homeroomShownMonday(){
+  var t = todayStr(), dow = parseDate(t).getDay();
+  return addDays(t, dow===0 ? 1 : (dow===6 ? 2 : 1-dow));
+}
+function homeroomKey(weekStart){
+  var s = state.settings;
+  return 'homeroom:'+s.neisSchul+':'+s.homeroomGrade+':'+s.homeroomClass+':'+weekStart;
+}
+function timetableEndpoints(){
+  var name = state.settings.neisSchoolName||'';
+  if(/초등/.test(name)) return ['elsTimetable'];
+  if(/중학교/.test(name)) return ['misTimetable'];
+  if(/고등|고교/.test(name)) return ['hisTimetable'];
+  return ['hisTimetable','misTimetable','elsTimetable'];
+}
+function neisRows(url, name){
+  return fetch(url).then(function(r){ return r.json(); }).then(function(data){
+    var rows = (data[name] && data[name][1] && data[name][1].row) || [];
+    // 데이터가 없으면 RESULT INFO-200으로 온다. 그 밖의 RESULT는 오류다.
+    if(!rows.length && data.RESULT && data.RESULT.CODE!=='INFO-200') throw new Error(data.RESULT.MESSAGE||'조회 실패');
+    return rows;
+  });
+}
+function neisBaseUrl(name){
+  return 'https://open.neis.go.kr/hub/'+name+'?KEY='+encodeURIComponent(NEIS_KEY)+'&Type=json&pIndex=1&pSize=1000'+
+    '&ATPT_OFCDC_SC_CODE='+encodeURIComponent(state.settings.neisOfcdc)+
+    '&SD_SCHUL_CODE='+encodeURIComponent(state.settings.neisSchul);
+}
+function fetchHomeroomWeek(weekStart){
+  var key = homeroomKey(weekStart);
+  var endpoints = timetableEndpoints();
+  var query = '&GRADE='+encodeURIComponent(state.settings.homeroomGrade)+'&CLASS_NM='+encodeURIComponent(state.settings.homeroomClass)+
+    '&TI_FROM_YMD='+ymdCompact(weekStart)+'&TI_TO_YMD='+ymdCompact(addDays(weekStart, 4));
+  function tryAt(i){
+    return neisRows(neisBaseUrl(endpoints[i])+query, endpoints[i]).then(function(rows){
+      return (!rows.length && i+1<endpoints.length) ? tryAt(i+1) : rows;
+    });
+  }
+  return tryAt(0).then(function(rows){
+    var days = {};
+    rows.forEach(function(r){
+      var y = r.ALL_TI_YMD||'';
+      var ds = y.slice(0,4)+'-'+y.slice(4,6)+'-'+y.slice(6,8);
+      var period = String(parseInt(r.PERIO,10));
+      var subject = String(r.ITRT_CNTNT||'').replace(/^[\s*\-]+/,'').trim();
+      if(!subject || period==='NaN') return;
+      var day = days[ds] || (days[ds] = {});
+      // 학과가 여럿이거나 선택과목이면 한 교시에 여러 줄이 올 수 있다 → 겹치지 않게 이어 붙인다
+      if(!day[period]) day[period] = subject;
+      else if(day[period].split('/').indexOf(subject)===-1) day[period] += '/'+subject;
+    });
+    var entry = { fetchedOn: todayStr(), days: days };
+    homeroomMem[key] = entry;
+    saveJSON(key, entry);
+    return entry;
+  });
+}
+function loadHomeroomWeek(weekStart, force){
+  var key = homeroomKey(weekStart);
+  var mem = homeroomMem[key];
+  var ready = mem ? Promise.resolve(mem) : loadJSON(key, null);
+  return ready.then(function(entry){
+    if(entry) homeroomMem[key] = entry;
+    var fresh = entry && (entry.fetchedOn===todayStr() || addDays(weekStart, 4) < todayStr());
+    if(fresh && !force) return entry;
+    return fetchHomeroomWeek(weekStart).catch(function(err){
+      if(entry) return entry; // 오프라인 등으로 실패하면 예전에 받아둔 걸 보여준다
+      throw err;
+    });
+  });
+}
+function fetchClassList(){
+  var schul = state.settings.neisSchul;
+  if(homeroomClassMem[schul]) return Promise.resolve(homeroomClassMem[schul]);
+  var t = todayStr(), year = parseInt(t.slice(0,4),10);
+  if(parseInt(t.slice(5,7),10) < 3) year -= 1; // 1·2월은 아직 지난 학년도
+  return neisRows(neisBaseUrl('classInfo')+'&AY='+year, 'classInfo').then(function(rows){
+    var map = {};
+    rows.forEach(function(r){
+      var g = String(r.GRADE||''), c = String(r.CLASS_NM||'');
+      if(!g || !c) return;
+      var list = map[g] || (map[g] = []);
+      if(list.indexOf(c)===-1) list.push(c);
+    });
+    Object.keys(map).forEach(function(g){ map[g].sort(naturalClassCompare); });
+    if(Object.keys(map).length) homeroomClassMem[schul] = map;
+    return map;
+  });
+}
+function renderHomeroomPick(box, view){
+  if(!box) return;
+  box.innerHTML = '<p class="small-note" style="margin-top:0;">반 목록을 불러오는 중…</p>';
+  fetchClassList().then(function(map){
+    if(!document.body.contains(box)) return;
+    var grades = Object.keys(map).sort(naturalClassCompare);
+    if(!grades.length){
+      box.innerHTML = '<p class="small-note" style="margin-top:0;">나이스에 올라온 반 목록이 없어요.</p>';
+      return;
+    }
+    var set = homeroomSet();
+    box.innerHTML = '<div class="add-row"><select id="homeroomGradeSelect" style="flex:1;"><option value="">학년</option>'+
+      grades.map(function(g){ return '<option value="'+escapeHtml(g)+'"'+(set && state.settings.homeroomGrade===g?' selected':'')+'>'+escapeHtml(g)+'학년</option>'; }).join('')+
+      '</select><select id="homeroomClassSelect" style="flex:1;"></select></div>'+
+      (set ? '<p class="small-note" style="margin:6px 0 0;"><span id="homeroomClear" style="text-decoration:underline;cursor:pointer;">우리반 지정 해제</span></p>'
+           : '<p class="small-note" style="margin:6px 0 0;">담임이 아니면 고르지 않아도 돼요.</p>');
+    var gradeSel = document.getElementById('homeroomGradeSelect');
+    var classSel = document.getElementById('homeroomClassSelect');
+    function fillClasses(){
+      var list = map[gradeSel.value] || [];
+      var current = homeroomSet() && state.settings.homeroomGrade===gradeSel.value ? state.settings.homeroomClass : '';
+      classSel.innerHTML = '<option value="">반</option>'+list.map(function(c){
+        return '<option value="'+escapeHtml(c)+'"'+(c===current?' selected':'')+'>'+escapeHtml(c)+(/^\d+$/.test(c)?'반':'')+'</option>';
+      }).join('');
+    }
+    fillClasses();
+    gradeSel.addEventListener('change', fillClasses);
+    classSel.addEventListener('change', function(){
+      if(!gradeSel.value || !classSel.value) return;
+      state.settings.homeroomSchul = state.settings.neisSchul;
+      state.settings.homeroomGrade = gradeSel.value;
+      state.settings.homeroomClass = classSel.value;
+      saveSettings().then(function(){ renderHomeroomPick(box, view); renderHomeroomView(view); flashSaved(); });
+    });
+    var clear = document.getElementById('homeroomClear');
+    if(clear) clear.addEventListener('click', function(){
+      state.settings.homeroomSchul = ''; state.settings.homeroomGrade = ''; state.settings.homeroomClass = '';
+      saveSettings().then(function(){ renderHomeroomPick(box, view); renderHomeroomView(view); flashSaved(); });
+    });
+  }).catch(function(err){
+    if(!document.body.contains(box)) return;
+    box.innerHTML = '<p class="small-note" style="margin-top:0;">'+(isOfflineError(err) ? OFFLINE_MSG : '반 목록을 불러오지 못했어요. 잠시 후 다시 시도해주세요.')+'</p>';
+  });
+}
+function renderHomeroomView(view, force){
+  if(!view) return;
+  if(!homeroomSet()){ view.innerHTML = ''; return; }
+  var ws = homeroomShownMonday();
+  var key = homeroomKey(ws);
+  view.innerHTML = '<p class="small-note">시간표를 불러오는 중…</p>';
+  loadHomeroomWeek(ws, force).then(function(entry){
+    if(!document.body.contains(view) || !homeroomSet() || homeroomKey(ws)!==key) return;
+    var maxPeriod = 0;
+    Object.keys(entry.days).forEach(function(ds){
+      Object.keys(entry.days[ds]).forEach(function(p){ maxPeriod = Math.max(maxPeriod, parseInt(p,10)); });
+    });
+    var html = '<div class="hr-title">'+escapeHtml(homeroomLabel())+' · '+niceDate(ws)+' ~ '+niceDate(addDays(ws,4))+'</div>';
+    if(!maxPeriod){
+      html += '<p class="small-note">이 주에는 나이스에 올라온 시간표가 없어요. 방학이거나 학교에서 아직 올리지 않았을 수 있어요.</p>';
+    } else {
+      var dates = getWeekDates(ws);
+      html += '<table class="hr-table"><tr><th class="hr-p"></th>'+dates.map(function(d){
+        return '<th'+(d===todayStr()?' class="today"':'')+'>'+dayKorOf(d)+'</th>';
+      }).join('')+'</tr>';
+      for(var p=1; p<=maxPeriod; p++){
+        html += '<tr><th class="hr-p">'+p+'</th>'+dates.map(function(d){
+          var subject = entry.days[d] && entry.days[d][String(p)];
+          return '<td'+(d===todayStr()?' class="today"':'')+'>'+escapeHtml(subject||'')+'</td>';
+        }).join('')+'</tr>';
+      }
+      html += '</table>';
+    }
+    html += '<p class="small-note">학교가 나이스에 올린 시간표예요. 선생님 이름은 없고 실제와 다를 수 있어요. '+
+      '<span id="homeroomRefresh" style="text-decoration:underline;cursor:pointer;">다시 불러오기</span></p>';
+    view.innerHTML = html;
+    var refresh = document.getElementById('homeroomRefresh');
+    if(refresh) refresh.addEventListener('click', function(){
+      renderHomeroomView(view, true);
+      scheduleWidgetSync();
+    });
+  }).catch(function(err){
+    if(!document.body.contains(view)) return;
+    view.innerHTML = '<p class="small-note">'+(isOfflineError(err) ? OFFLINE_MSG : '시간표를 불러오지 못했어요. 잠시 후 다시 시도해주세요.')+'</p>';
+  });
+}
+
+// ---------- 홈 화면 위젯 (앱에서만 보이는 메뉴) ----------
+function renderSettingsWidget(body){
+  var isIos = !!(window.Capacitor && typeof window.Capacitor.getPlatform==='function' && window.Capacitor.getPlatform()==='ios');
+  var showNext = state.settings.widgetProgress==='next';
+  var widgets = [
+    ['다음 수업','곧 들어갈 반과 '+(showNext ? '다음' : '지난')+' 진도'],
+    ['오늘 시간표','오늘 수업과 지금 교시'],
+    ['이번 주 시간표','내 시간표를 요일별로 (수업 교체도 반영)'],
+    ['우리반 시간표', homeroomSet() ? homeroomLabel()+' 시간표' : '우리학교에서 학년·반을 고르면 나와요'],
+    ['오늘 급식', state.settings.labMeal && hasNeisSchool() ? '우리학교 점심 메뉴' : '우리학교에서 급식 보기를 켜면 나와요']
+  ];
+  var html = '<div class="settings-section" style="margin-top:0;"><h3>위젯 종류</h3>'+
+    widgets.map(function(w){
+      return '<div class="list-row"><div class="grow">'+w[0]+'<div class="sub">'+escapeHtml(w[1])+'</div></div></div>';
+    }).join('')+
+    '<button class="btn ghost small" id="widgetToSchool" style="width:100%;margin-top:8px;">우리학교에서 설정하기</button></div>';
+  html += '<div class="settings-section"><h3>다음 수업 위젯</h3>'+
+    '<div class="field-row"><label>보여줄 진도</label><select id="widgetProgressSelect">'+
+      '<option value="last"'+(showNext?'':' selected')+'>지난 진도 (지난번에 어디까지 했는지)</option>'+
+      '<option value="next"'+(showNext?' selected':'')+'>다음 진도 (이번에 나갈 내용)</option>'+
+    '</select></div>'+
+    '<p class="small-note" style="margin:0;">다음 진도는 진도 계획에 넣어 둔 순서대로 보여줘요. 계획이 없는 반은 비어 있어요.</p></div>';
+  html += '<div class="settings-section"><h3>추가하는 방법</h3><p class="small-note" style="margin:0;">'+
+    (isIos ? '홈 화면 빈 곳을 길게 누름 → 왼쪽 위 [편집] 또는 [+] → "진도수첩" 검색 → 원하는 위젯을 골라 [위젯 추가]'
+           : '홈 화면 빈 곳을 길게 누름 → [위젯] → "진도수첩" 선택 → 원하는 위젯을 홈 화면에 끌어다 놓기')+'</p></div>';
+  // 홈 화면 위젯이 비어 있을 때 원인을 알 수 있게, 앱이 위젯에 마지막으로 데이터를 넘긴 결과를 작게 보여준다.
+  var wl = null;
+  try{ wl = JSON.parse(localStorage.getItem(STORE_PREFIX+'widgetLast')||'null'); }catch(e){}
+  html += '<div class="settings-section"><h3>위젯이 안 바뀔 때</h3>'+
+    '<p class="small-note" id="widgetDiag" style="margin-top:0;">'+(wl ? (wl.ok ? escapeHtml(wl.at)+' 전달됨 ('+escapeHtml(wl.msg)+')' : escapeHtml(wl.at)+' · '+escapeHtml(wl.msg)) : '아직 전달 기록이 없어요')+'</p>'+
+    '<button class="btn ghost small" id="widgetRefreshBtn">위젯 지금 새로고침</button></div>';
+  body.innerHTML = html;
+  document.getElementById('widgetToSchool').addEventListener('click', function(){
+    state.settingsTab = 'school';
+    renderSettings();
+  });
+  document.getElementById('widgetProgressSelect').addEventListener('change', function(){
+    state.settings.widgetProgress = this.value;
+    saveSettings().then(function(){ renderSettingsWidget(body); flashSaved(); });
+  });
+  var refreshBtn = document.getElementById('widgetRefreshBtn');
+  refreshBtn.addEventListener('click', function(){
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '보내는 중…';
+    syncWidgetData().then(function(){ renderSettingsWidget(body); });
+  });
+}
+
+// ---------- 우리학교 급식 ----------
 // 나이스 급식 API를 주 단위로 한 번 불러와 기기에 저장하고, 같은 날에는 다시 부르지 않는다.
 // (앱에 들어 있는 나이스 인증키 하나를 모든 사용자가 같이 쓰기 때문에 호출을 아낀다)
 // 다른 메뉴 아이콘과 같은 선 아이콘(김이 나는 그릇)
@@ -6242,6 +6484,18 @@ function lastProgressShort(classId, dateStr){
   var idx = (state.plans[classId] || []).indexOf(last);
   return (idx!==-1 ? (idx+1)+'. ' : '')+last.title+(last.donePage ? ' ('+last.donePage+')' : '');
 }
+// '다음 진도': 마지막으로 나간 항목이 아직 안 끝났으면 그걸 이어서, 끝났으면 그 뒤의 첫 미완료 항목
+function nextProgressShort(classId, dateStr){
+  var items = state.plans[classId] || [];
+  if(!items.length) return '';
+  var last = lastProgressAsOf(classId, dateStr);
+  var from = last ? items.indexOf(last) : -1;
+  var idx = (from>=0 && !items[from].done) ? from : -1;
+  for(var i=from+1; idx<0 && i<items.length; i++) if(!items[i].done) idx = i;
+  for(var j=0; idx<0 && j<items.length; j++) if(!items[j].done) idx = j;
+  if(idx<0) return '진도 계획을 모두 마쳤어요';
+  return (idx+1)+'. '+items[idx].title+(items[idx].targetPage ? ' ('+items[idx].targetPage+')' : '');
+}
 function buildWidgetData(){
   var today = todayStr();
   var periods = [], days = {}, meals = {};
@@ -6256,7 +6510,8 @@ function buildWidgetData(){
       var pt = computePeriodTime(s.period-1);
       periods.push({ date:d, period:s.period, start:dateTimeMs(d, pt.start), end:dateTimeMs(d, pt.end),
         startText:pt.start, endText:pt.end, className:cls.name, color:cls.color,
-        lastProgress:lastProgressShort(s.classId, d), done:isRecordDone(findRecord(d, s.period)) });
+        lastProgress:lastProgressShort(s.classId, d), nextProgress:nextProgressShort(s.classId, d),
+        done:isRecordDone(findRecord(d, s.period)) });
     });
   }
   periods.sort(function(a,b){ return a.start-b.start; });
@@ -6267,7 +6522,49 @@ function buildWidgetData(){
       if(lunch) meals[md] = { dishes: lunch.dishes.map(function(x){ return x.name; }), cal: lunch.cal||'' };
     }
   }
-  return { updatedAt:Date.now(), today:today, periods:periods, days:days, mealEnabled:mealEnabled, meals:meals, week:buildWidgetWeek() };
+  return { updatedAt:Date.now(), today:today, periods:periods, days:days, mealEnabled:mealEnabled, meals:meals, week:buildWidgetWeek(),
+    homeroomLabel: homeroomSet() ? homeroomLabel() : '', homeroom: buildWidgetHomeroom(),
+    progressMode: state.settings.widgetProgress==='next' ? 'next' : 'last' };
+}
+// '우리반 시간표' 위젯용: week와 같은 모양(요일×교시 격자)이고, 받아둔 주만 byWeek에 담는다.
+function buildWidgetHomeroom(){
+  if(!homeroomSet()) return null;
+  var thisMonday = weekStartOf(todayStr());
+  var weeks = [thisMonday, addDays(thisMonday, 7)];
+  var n = 0;
+  var entries = weeks.map(function(ws){
+    var entry = homeroomMem[homeroomKey(ws)];
+    if(entry) Object.keys(entry.days).forEach(function(ds){
+      Object.keys(entry.days[ds]).forEach(function(p){ n = Math.max(n, parseInt(p,10)); });
+    });
+    return entry;
+  });
+  n = Math.min(Math.max(n, state.settings.periodsPerDay || 7), 8);
+  var times = [];
+  for(var p=0; p<n; p++) times.push(computePeriodTime(p).start);
+  var byWeek = {};
+  weeks.forEach(function(ws, i){
+    var entry = entries[i];
+    if(!entry || !Object.keys(entry.days).length) return;
+    var grid = {};
+    getWeekDates(ws).forEach(function(d){
+      var column = new Array(n).fill(null);
+      var day = entry.days[d] || {};
+      Object.keys(day).forEach(function(key){
+        var idx = parseInt(key,10)-1;
+        if(idx>=0 && idx<n) column[idx] = { name:day[key], color:subjectColor(day[key]) };
+      });
+      grid[dayKorOf(d)] = column;
+    });
+    byWeek[ws] = grid;
+  });
+  return { days:DAYS.slice(), periods:n, times:times, byWeek:byWeek };
+}
+// 같은 과목은 언제나 같은 색
+function subjectColor(name){
+  var h = 0;
+  for(var i=0; i<name.length; i++) h = (h*31 + name.charCodeAt(i)) >>> 0;
+  return CLASS_COLORS[h % CLASS_COLORS.length];
 }
 // '이번 주 시간표' 위젯용: 설정 > 내 시간표와 같은 요일×교시 격자 (요일별 기본 시간표)
 function buildWidgetWeek(){
@@ -6283,7 +6580,24 @@ function buildWidgetWeek(){
       grid[dk].push(c ? { name:c.name, color:c.color } : null);
     }
   });
-  return { days:DAYS.slice(), periods:n, times:times, grid:grid,
+  // 일회성 수업 교체·요일 변경·보강은 날짜에 걸려 있어서, 이번 주부터 3주 치는 실제 날짜 기준 격자를 따로 보낸다.
+  // 위젯은 보여줄 주의 월요일로 byWeek를 찾고, 없으면 기본 격자(grid)를 쓴다. (앱을 안 연 채 주가 바뀌어도 맞게 보이도록)
+  var byWeek = {};
+  var thisMonday = getWeekDates(todayStr())[0];
+  for(var w=0; w<3; w++){
+    var dates = getWeekDates(addDays(thisMonday, w*7));
+    var weekGrid = {};
+    dates.forEach(function(d){
+      var column = new Array(n).fill(null);
+      scheduleFor(d).forEach(function(s){
+        var c = getClass(s.classId);
+        if(c && s.period>=1 && s.period<=n) column[s.period-1] = { name:c.name, color:c.color };
+      });
+      weekGrid[dayKorOf(d)] = column;
+    });
+    byWeek[dates[0]] = weekGrid;
+  }
+  return { days:DAYS.slice(), periods:n, times:times, grid:grid, byWeek:byWeek,
     lunchAfter: state.settings.lunchAfterPeriod||0, cleaningAfter: state.settings.cleaningAfterPeriod||0 };
 }
 // iOS는 앱이 늦게 등록한 플러그인을 registerPlugin 프록시가 못 찾는 경우가 있어서,
@@ -6299,7 +6613,7 @@ function widgetSetData(json){
   });
   return Promise.race([ call, timeout ]);
 }
-// 설정 > 실험실 아래에 보여주는 마지막 전달 결과 (위젯이 비어 있을 때 원인 확인용)
+// 설정 > 홈 화면 위젯에 보여주는 마지막 전달 결과 (위젯이 비어 있을 때 원인 확인용)
 function recordWidgetResult(ok, msg){
   var d = new Date();
   try{ localStorage.setItem(STORE_PREFIX+'widgetLast', JSON.stringify({ ok:ok, at:pad2(d.getHours())+':'+pad2(d.getMinutes()), msg:msg||'' })); }catch(e){}
@@ -6312,7 +6626,11 @@ function syncWidgetData(){
   var mealPrefetch = (state.settings.labMeal && state.settings.neisSchul)
     ? Promise.all([ loadMealDay(today), loadMealDay(addDays(today, 7)) ]).catch(function(){})
     : Promise.resolve();
-  return Promise.all([ ensureMonth(ymOf(today)), ensureMonth(ymOf(addDays(today, 13))), mealPrefetch ]).then(function(){
+  var thisMonday = weekStartOf(today);
+  var homeroomPrefetch = homeroomSet()
+    ? Promise.all([ loadHomeroomWeek(thisMonday), loadHomeroomWeek(addDays(thisMonday, 7)) ]).catch(function(){})
+    : Promise.resolve();
+  return Promise.all([ ensureMonth(ymOf(today)), ensureMonth(ymOf(addDays(today, 13))), mealPrefetch, homeroomPrefetch ]).then(function(){
     var data = buildWidgetData();
     recordWidgetResult(false, '보내는 중… (앱 네이티브로 전송)');
     return widgetSetData(JSON.stringify(data)).then(function(){
